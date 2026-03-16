@@ -15,6 +15,7 @@ interface Company {
   id: string;
   name: string;
   business_type: string;
+  logo_url?: string;
 }
 
 interface Service {
@@ -257,8 +258,12 @@ export default function PublicBookingPage() {
       <div className="max-w-xl w-full">
         {/* Header Profile */}
         <div className="text-center mb-8">
-          <div className="w-24 h-24 bg-blue-100 text-[#0284c7] font-bold text-4xl rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-md">
-            {company.name.charAt(0).toUpperCase()}
+          <div className="w-24 h-24 bg-blue-100 text-[#0284c7] font-bold text-4xl rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white shadow-md overflow-hidden bg-white">
+            {company.logo_url ? (
+              <img src={company.logo_url} alt={company.name} className="w-full h-full object-cover" />
+            ) : (
+              company.name.charAt(0).toUpperCase()
+            )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{company.name}</h1>
           <div className="flex items-center justify-center gap-2 mt-2 text-slate-500 text-sm">

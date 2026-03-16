@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { ImageUpload } from "@/components/ui/ImageUpload";
 
 const DAYS_OF_WEEK = [
   { id: 1, name: "Segunda-feira" },
@@ -24,12 +25,15 @@ export default function ConfiguracoesPage() {
   const [saving, setSaving] = useState(false);
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState("");
+  const [logoUrl, setLogoUrl] = useState("");
   const [slug, setSlug] = useState("");
+  const [origin, setOrigin] = useState("");
   
   const [hours, setHours] = useState<Record<number, { active: boolean; open: string; close: string }>>({});
 
   useEffect(() => {
     async function fetchData() {
+      setOrigin(typeof window !== 'undefined' ? window.location.origin : '');
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       
@@ -45,13 +49,14 @@ export default function ConfiguracoesPage() {
           
           const { data: companyData } = await supabase
             .from("companies")
-            .select("name, slug")
+            .select("name, slug, logo_url")
             .eq("id", userData.company_id)
             .single();
             
           if (companyData) {
             setCompanyName(companyData.name);
             setSlug(companyData.slug || "");
+            setLogoUrl(companyData.logo_url || "");
           }
 
           const { data: hoursData } = await supabase
@@ -84,7 +89,10 @@ export default function ConfiguracoesPage() {
     const supabase = createClient();
 
     // Update company
-    await supabase.from("companies").update({ name: companyName }).eq("id", companyId);
+    await supabase.from("companies").update({ 
+      name: companyName,
+      logo_url: logoUrl 
+    }).eq("id", companyId);
 
     // Update business hours (delete all current and insert active ones)
     await supabase.from("business_hours").delete().eq("company_id", companyId);
@@ -129,10 +137,10 @@ export default function ConfiguracoesPage() {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-md bg-white border border-blue-200 rounded-md p-3 text-sm font-medium text-slate-700 flex items-center shadow-sm">
-                <span className="text-slate-400 mr-1">agendafacil.com/</span>{slug}
+              <div className="flex-1 max-w-md bg-white border border-blue-200 rounded-md p-3 text-sm font-medium text-slate-700 flex items-center shadow-sm truncate">
+                <span className="text-slate-400 mr-1">{origin ? `${origin}/` : 'carregando.../'}</span>{slug}
               </div>
-              <Button variant="outline" className="bg-white hover:bg-slate-50 border-blue-200 text-blue-700" onClick={() => navigator.clipboard.writeText(`${window.location.origin}/${slug}`)}>
+              <Button variant="outline" className="bg-white hover:bg-slate-50 border-blue-200 text-blue-700" onClick={() => navigator.clipboard.writeText(`${origin}/${slug}`)}>
                 <Copy className="h-4 w-4 mr-2" />
                 Copiar
               </Button>
@@ -152,7 +160,15 @@ export default function ConfiguracoesPage() {
             <CardTitle>Informações do Negócio</CardTitle>
             <CardDescription>Dados básicos que aparecem para seus clientes.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <div className="flex flex-col items-center sm:flex-row sm:items-start gap-6 border-b border-slate-100 pb-6">
+              <ImageUpload value={logoUrl} onChange={setLogoUrl} disabled={saving} />
+              <div className="flex-1 space-y-1 text-center sm:text-left pt-2">
+                <h4 className="font-semibold text-slate-900">Logo da Empresa</h4>
+                <p className="text-sm text-slate-500">Este logo será exibido na sua página pública de agendamento.</p>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="companyName">Nome da Empresa</Label>
               <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />

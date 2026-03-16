@@ -48,12 +48,37 @@ export function Topbar({ companySlug }: { companySlug?: string | null }) {
             <span>Novo Agendamento</span>
           </Button>
         )}
-        <button type="button" className="relative text-slate-400 hover:text-slate-500 transition-colors focus:outline-none">
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white ring-2 ring-white">
-            3
-          </span>
-          <Bell className="h-6 w-6" />
-        </button>
+        
+        <div className="relative group">
+          <button type="button" className="relative text-slate-400 hover:text-slate-500 transition-colors focus:outline-none p-1 rounded-full hover:bg-slate-100">
+            <span className="absolute top-0 right-0 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white ring-2 ring-white">
+              1
+            </span>
+            <Bell className="h-6 w-6" />
+          </button>
+          
+          <div className="absolute right-0 mt-2 w-80 origin-top-right rounded-xl bg-white p-4 shadow-xl ring-1 ring-black/5 transition-all opacity-0 invisible group-focus-within:opacity-100 group-focus-within:visible">
+            <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900">Notificações</h3>
+              <span className="text-[10px] text-[#0284c7] font-bold uppercase tracking-wider">Novo</span>
+            </div>
+            <div className="space-y-3">
+              <div className="flex gap-3 p-2 rounded-lg bg-blue-50/50">
+                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <Plus className="h-4 w-4 text-[#0284c7]" />
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-slate-900">Novo Agendamento!</p>
+                  <p className="text-[11px] text-slate-500">João da Silva agendou um Corte de Cabelo para hoje às 14:00.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Agora mesmo</p>
+                </div>
+              </div>
+            </div>
+            <Button variant="ghost" className="w-full mt-4 h-8 text-xs text-slate-500 hover:text-slate-900">
+              Ver todas as notificações
+            </Button>
+          </div>
+        </div>
       </div>
     </header>
   );

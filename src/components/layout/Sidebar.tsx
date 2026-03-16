@@ -79,8 +79,12 @@ export function Sidebar({ user }: { user: any }) {
       <div className="flex-shrink-0 p-4 border-t border-slate-800">
         <div className="flex items-center w-full">
           <div className="flex-shrink-0">
-            <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-medium text-white">
-              {getInitials(user?.name || "")}
+            <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-medium text-white overflow-hidden">
+              {user?.companies?.logo_url ? (
+                <img src={user.companies.logo_url} alt={user.companies.name} className="h-full w-full object-cover" />
+              ) : (
+                getInitials(user?.name || "")
+              )}
             </div>
           </div>
           <div className="ml-3 truncate">
