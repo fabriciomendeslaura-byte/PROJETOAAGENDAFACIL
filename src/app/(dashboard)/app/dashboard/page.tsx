@@ -144,23 +144,18 @@ export default function DashboardOverview() {
                     </div>
                   )}
                   {appointments.map((apt) => (
-                    <div key={apt.id} className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-4 hidden sm:flex">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold">
-                          {apt.customers?.name?.charAt(0).toUpperCase()}
-                        </div>
+                    <div key={apt.id} className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0 last:pb-0 gap-3">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold flex-shrink-0">
+                        {apt.customers?.name?.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium leading-none text-slate-900">{apt.customers?.name}</p>
-                        <p className="text-sm text-slate-500 mt-1">{apt.services?.name}</p>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold truncate text-slate-900">{apt.customers?.name}</p>
+                        <p className="text-xs text-slate-500 truncate mt-0.5">{apt.services?.name}</p>
                       </div>
-                      <div className="flex items-center gap-4 text-right">
-                        <div>
-                          <p className="text-sm font-bold text-slate-900">{apt.start_time.substring(0, 5)}</p>
-                          <p className="text-xs text-slate-500">{apt.services?.duration_minutes} min</p>
-                        </div>
-                        <Badge variant={apt.status === "confirmed" ? "success" : "warning"} className="hidden sm:inline-flex">
-                          {apt.status === "confirmed" ? "Confirmado" : "Pendente"}
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <p className="text-sm font-bold text-slate-900">{apt.start_time.substring(0, 5)}</p>
+                        <Badge variant={apt.status === "confirmed" ? "success" : "warning"} className="text-[10px] px-1.5 py-0 h-4">
+                          {apt.status === "confirmed" ? "Sim" : "Pnd"}
                         </Badge>
                       </div>
                     </div>

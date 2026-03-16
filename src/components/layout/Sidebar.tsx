@@ -23,7 +23,7 @@ const menuItems = [
   { name: "Configurações", href: "/app/configuracoes", icon: Settings },
 ];
 
-export function Sidebar({ user }: { user: any }) {
+export function Sidebar({ user, isMobile }: { user: any, isMobile?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
 
@@ -39,7 +39,10 @@ export function Sidebar({ user }: { user: any }) {
   };
 
   return (
-    <div className="flex h-screen w-64 flex-col bg-slate-900 text-slate-300 transition-all border-r border-slate-800">
+    <div className={cn(
+      "flex w-64 flex-col bg-slate-900 text-slate-300 transition-all border-r border-slate-800",
+      isMobile ? "h-full" : "h-screen"
+    )}>
       <div className="flex h-16 items-center flex-shrink-0 px-6 bg-slate-950">
         <Link href="/app/dashboard" className="flex items-center gap-2 text-white">
           <Calendar className="h-6 w-6 text-[#38bdf8]" />

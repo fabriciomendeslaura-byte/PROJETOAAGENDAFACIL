@@ -123,7 +123,7 @@ export default function ConfiguracoesPage() {
           <h2 className="text-2xl font-bold tracking-tight text-slate-900">Configurações</h2>
           <p className="text-slate-500">Gerencie as informações do seu negócio e link de agendamento.</p>
         </div>
-        <Button onClick={handleSave} disabled={saving} className="flex items-center gap-2 bg-[#0284c7] hover:bg-[#0369a1]">
+        <Button onClick={handleSave} disabled={saving} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-[#0284c7] hover:bg-[#0369a1] h-11 sm:h-9">
           <Save className="h-4 w-4" />
           {saving ? "Salvando..." : "Salvar Alterações"}
         </Button>
@@ -136,19 +136,22 @@ export default function ConfiguracoesPage() {
             <CardDescription className="text-blue-700">Compartilhe este link no seu Instagram e WhatsApp para seus clientes agendarem sozinhos.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-3">
-              <div className="flex-1 max-w-md bg-white border border-blue-200 rounded-md p-3 text-sm font-medium text-slate-700 flex items-center shadow-sm truncate">
-                <span className="text-slate-400 mr-1">{origin ? `${origin}/` : 'carregando.../'}</span>{slug}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              <div className="flex-1 bg-white border border-blue-200 rounded-md p-3 text-sm font-medium text-slate-700 flex items-center shadow-sm truncate">
+                <span className="text-slate-400 mr-1 shrink-0">{origin ? `${origin.replace(/^https?:\/\//, '')}/` : '.../'}</span>
+                <span className="truncate">{slug}</span>
               </div>
-              <Button variant="outline" className="bg-white hover:bg-slate-50 border-blue-200 text-blue-700" onClick={() => navigator.clipboard.writeText(`${origin}/${slug}`)}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copiar
-              </Button>
-              <Link href={`/${slug}`} target="_blank">
-                <Button variant="ghost" className="text-blue-700 hover:text-blue-800 hover:bg-blue-100">
-                  <ExternalLink className="h-4 w-4" />
+              <div className="flex gap-2">
+                <Button variant="outline" className="flex-1 sm:flex-initial bg-white hover:bg-slate-50 border-blue-200 text-blue-700 h-10 sm:h-9" onClick={() => navigator.clipboard.writeText(`${origin}/${slug}`)}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copiar
                 </Button>
-              </Link>
+                <Link href={`/${slug}`} target="_blank" className="sm:inline-block">
+                  <Button variant="ghost" className="h-10 sm:h-9 text-blue-700 hover:text-blue-800 hover:bg-blue-100">
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
             </div>
           </CardContent>
         </Card>
