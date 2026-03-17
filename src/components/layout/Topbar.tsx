@@ -25,6 +25,7 @@ export function Topbar({
 }) {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [hasUnread, setHasUnread] = useState(true);
   const notificationRef = useRef<HTMLDivElement>(null);
   const currentPage = menuItems.find(item => item.href === pathname)?.name || "Página";
 
@@ -78,14 +79,19 @@ export function Topbar({
         <div className="relative" ref={notificationRef}>
           <button 
             type="button" 
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => {
+              setShowNotifications(!showNotifications);
+              if (!showNotifications) setHasUnread(false);
+            }}
             className={cn(
               "relative text-slate-400 hover:text-slate-500 transition-colors focus:outline-none p-2 rounded-full hover:bg-slate-100",
               showNotifications && "bg-slate-100 text-slate-900"
             )}
           >
-            <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-white">
-            </span>
+            {hasUnread && (
+              <span className="absolute top-1.5 right-1.5 flex h-2.5 w-2.5 items-center justify-center rounded-full bg-red-500 ring-2 ring-white">
+              </span>
+            )}
             <Bell className="h-5 w-5 sm:h-6 sm:w-6" />
           </button>
           
