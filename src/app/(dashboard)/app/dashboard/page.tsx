@@ -5,8 +5,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Users, Calendar as CalendarIcon, Clock, DollarSign, ArrowUpRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Appointment {
   id: string;
@@ -19,6 +20,7 @@ interface Appointment {
 
 export default function DashboardOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{ day: string, count: number, date: Date }[]>([]);
   const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -54,6 +56,28 @@ export default function DashboardOverview() {
           setMetrics(prev => ({ ...prev, todayCount: appts.length, revenue }));
         }
 
+        // Fetch weekly appointments for chart - Fixed to start on Monday
+        const startOfMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
+        const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfMonday, i));
+        
+        const { data: weeklyAppts } = await supabase
+          .from("appointments")
+          .select("appointment_date")
+          .eq("company_id", userData.company_id)
+          .gte("appointment_date", format(weekDays[0], "yyyy-MM-dd"))
+          .lte("appointment_date", format(weekDays[6], "yyyy-MM-dd"))
+          .neq("status", "cancelled");
+
+        const chartData = weekDays.map(date => {
+          const count = weeklyAppts?.filter(a => isSameDay(new Date(a.appointment_date + 'T12:00:00'), date)).length || 0;
+          return {
+            day: format(date, "EEE", { locale: ptBR }).replace('.', ''),
+            count,
+            date
+          };
+        });
+        setWeeklyData(chartData);
+
         // Fetch total clients
         const { count } = await supabase
           .from("customers")
@@ -81,49 +105,68 @@ export default function DashboardOverview() {
         <div className="p-12 text-center text-slate-500">Carregando dados do painel...</div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Agendamentos Hoje</CardTitle>
-                <CalendarIcon className="h-4 w-4 text-slate-400" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{metrics.todayCount}</div>
-                <p className="text-xs text-slate-500 flex items-center mt-1">
-                  Agendamentos para o dia de hoje
-                </p>
-              </CardContent>
-            </Card>
-            <Card>
+          <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.5 }}
+            >
+              <Card className="relative overflow-hidden group border-blue-100 bg-gradient-to-br from-white to-blue-50/30">
+                <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                  <CalendarIcon className="h-12 w-12 text-blue-600" />
+                </div>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium text-slate-600">Agendamentos Hoje</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-3xl font-bold text-slate-900">{metrics.todayCount}</div>
+                  <div className="flex items-center gap-2 mt-2">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((metrics.todayCount / 10) * 100, 100)}%` }}
+                        className="h-full bg-blue-500"
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold text-blue-600">{Math.round((metrics.todayCount / 10) * 100)}% da meta</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <Card className="border-slate-100">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium text-slate-600">Total de Clientes</CardTitle>
                 <Users className="h-4 w-4 text-slate-400" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">{metrics.newClients}</div>
-                <p className="text-xs text-slate-500 mt-1">Registrados na plataforma</p>
+                <div className="text-3xl font-bold text-slate-900">{metrics.newClients}</div>
+                <p className="text-xs text-slate-500 mt-1">Base de clientes ativa</p>
               </CardContent>
             </Card>
-            <Card>
+
+            <Card className="border-green-100 bg-gradient-to-br from-white to-green-50/30">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Faturamento Previsto Hoje</CardTitle>
-                <DollarSign className="h-4 w-4 text-slate-400" />
+                <CardTitle className="text-sm font-medium text-slate-600">Faturamento Hoje</CardTitle>
+                <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">R$ {metrics.revenue.toFixed(2).replace('.', ',')}</div>
-                <p className="text-xs text-slate-500 flex items-center mt-1">
-                  Baseado nos {metrics.todayCount} agendamentos
-                </p>
+                <div className="text-3xl font-bold text-slate-900">R$ {metrics.revenue.toFixed(2).replace('.', ',')}</div>
+                <div className="flex items-center gap-1 mt-1 text-green-600 font-bold text-[10px]">
+                  <ArrowUpRight className="h-3 w-3" />
+                  <span>Em tempo real</span>
+                </div>
               </CardContent>
             </Card>
-            <Card>
+
+            <Card className="border-slate-100 relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Status</CardTitle>
-                <Clock className="h-4 w-4 text-slate-400" />
+                <CardTitle className="text-sm font-medium text-slate-600">Status do Sistema</CardTitle>
+                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">Ativo</div>
-                <p className="text-xs text-slate-500 mt-1">Sistema operando normalmente</p>
+                <div className="text-2xl font-bold text-slate-900">Online</div>
+                <p className="text-xs text-slate-500 mt-1">Sincronizando agendamentos</p>
               </CardContent>
             </Card>
           </div>
@@ -164,27 +207,57 @@ export default function DashboardOverview() {
               </CardContent>
             </Card>
             
-            <Card className="lg:col-span-3">
+            <Card className="lg:col-span-3 overflow-hidden">
               <CardHeader>
                 <CardTitle>Desempenho Semanal</CardTitle>
                 <CardDescription>Resumo de agendamentos diários</CardDescription>
               </CardHeader>
-              <CardContent className="flex flex-col items-center justify-center py-6">
-                {/* Simple mock chart visualization using CSS */}
-                <div className="flex items-end justify-between w-full h-48 gap-2">
-                  {[40, 65, 45, 80, 55, 90, 30].map((height, i) => (
-                    <div key={i} className="flex flex-col items-center gap-2 flex-1 group">
-                      <div className="w-full relative rounded-t-sm" style={{ height: '100%' }}>
-                        <div 
-                          className="absolute bottom-0 w-full bg-[#0284c7] rounded-t-sm transition-all duration-500 group-hover:bg-[#0369a1]" 
-                          style={{ height: `${height}%` }}
-                        />
+              <CardContent className="h-64 pt-4">
+                <div className="flex items-end justify-between w-full h-full gap-2 sm:gap-4 px-2">
+                  {weeklyData.map((data, i) => {
+                    const maxCount = Math.max(...weeklyData.map(d => d.count), 5);
+                    const heightPercent = (data.count / maxCount) * 100;
+                    const isToday = isSameDay(data.date, new Date());
+                    
+                    return (
+                      <div key={i} className="flex flex-col items-center gap-2 flex-1 relative group h-full justify-end">
+                        {/* Tooltip on hover */}
+                        <motion.div 
+                          initial={{ opacity: 0, y: 10 }}
+                          whileHover={{ opacity: 1, y: 0 }}
+                          className="absolute -top-8 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] px-2 py-1 rounded pointer-events-none z-50 whitespace-nowrap shadow-xl"
+                        >
+                          {data.count} agendamentos
+                        </motion.div>
+
+                        {/* Animated Bar */}
+                        <div className="w-full relative h-[80%] flex items-end">
+                          <motion.div 
+                            initial={{ height: 0 }}
+                            animate={{ height: `${heightPercent}%` }}
+                            transition={{ delay: i * 0.1, duration: 0.8, ease: "easeOut" }}
+                            className={`w-full rounded-t-md relative overflow-hidden bg-gradient-to-t selection:bg-none ${
+                              isToday 
+                              ? "from-blue-600 to-blue-400" 
+                              : "from-slate-200 to-slate-100 group-hover:from-blue-200 group-hover:to-blue-100"
+                            } transition-colors duration-300`}
+                          >
+                            {isToday && (
+                              <motion.div 
+                                animate={{ opacity: [0.3, 0.6, 0.3] }}
+                                transition={{ repeat: Infinity, duration: 2 }}
+                                className="absolute inset-0 bg-white/20"
+                              />
+                            )}
+                          </motion.div>
+                        </div>
+                        
+                        <span className={`text-[10px] sm:text-xs font-medium ${isToday ? "text-blue-600 font-bold" : "text-slate-500"}`}>
+                          {data.day}
+                        </span>
                       </div>
-                      <span className="text-xs text-slate-500">
-                        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"][i]}
-                      </span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>

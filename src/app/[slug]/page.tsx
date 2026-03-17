@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
-import { format, addDays, getDay } from "date-fns";
+import { format, addDays, getDay, isAfter, setHours, setMinutes, startOfDay, isEqual } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { sendBookingNotification } from "./actions";
 
 interface Company {
   id: string;
@@ -45,12 +46,13 @@ export default function PublicBookingPage() {
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [bookedAppointments, setBookedAppointments] = useState<any[]>([]);
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   
   const [clientName, setClientName] = useState("");
   const [clientPhone, setClientPhone] = useState("");
-
-  const nextDates = Array.from({ length: 7 }, (_, i) => addDays(new Date(), i));
+  
+  const [nextDates, setNextDates] = useState<Date[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -72,50 +74,133 @@ export default function PublicBookingPage() {
           supabase.from('business_hours').select('*').eq('company_id', companyData.id)
         ]);
         
+        constFetchedServices = servicesRes.data || [];
+        constFetchedHours = hoursRes.data || [];
+        
         if (servicesRes.data) setServices(servicesRes.data);
         if (hoursRes.data) setBusinessHours(hoursRes.data);
+
+        // Calculate valid next dates
+        const potentialDates = Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
+        const validDates: Date[] = [];
+        
+        for (const date of potentialDates) {
+          const dayOfWeek = getDay(date);
+          const dayHours = constFetchedHours.find(h => h.weekday === dayOfWeek);
+          
+          if (dayHours) {
+            // Check if day is today and still has time slots
+            if (isEqual(startOfDay(date), startOfDay(new Date()))) {
+              const closeH = parseInt(dayHours.close_time.substring(0, 2));
+              const closeM = parseInt(dayHours.close_time.substring(3, 5));
+              const now = new Date();
+              const closeTime = setMinutes(setHours(startOfDay(now), closeH), closeM);
+              
+              // If it's already past closing time or very close to it, skip today
+              if (isAfter(now, closeTime)) continue;
+            }
+            validDates.push(date);
+          }
+          if (validDates.length >= 7) break;
+        }
+        
+        setNextDates(validDates);
+        if (validDates.length > 0) {
+          setSelectedDate(validDates[0]);
+        }
       }
       
       setLoading(false);
     }
+    let constFetchedServices: Service[] = [];
+    let constFetchedHours: BusinessHour[] = [];
     loadData();
   }, [slug]);
 
-  // Update available times when date or service changes
+  // Update available times and fetch booked appointments when date or service changes
   useEffect(() => {
-    if (!company || !selectedService) return;
-    
-    // In a real application, you would query Supabase to find booked times and filter them out.
-    // For this integration task, we will calculate available slots based on business_hours.
-    const dayOfWeek = getDay(selectedDate);
-    const hours = businessHours.find(h => h.weekday === dayOfWeek);
-    
-    if (!hours) {
-      setAvailableTimes([]);
+    async function updateAvailability() {
+      if (!company || !selectedService) return;
+      
+      const supabase = createClient();
+      
+      // Fetch existing appointments for the selected date
+      const { data: existingBookings } = await supabase
+        .from('appointments')
+        .select('start_time, end_time')
+        .eq('company_id', company.id)
+        .eq('appointment_date', format(selectedDate, "yyyy-MM-dd"))
+        .neq('status', 'cancelled');
+        
+      if (existingBookings) {
+        setBookedAppointments(existingBookings);
+      }
+
+      const dayOfWeek = getDay(selectedDate);
+      const hours = businessHours.find(h => h.weekday === dayOfWeek);
+      
+      if (!hours) {
+        setAvailableTimes([]);
+        setSelectedTime(null);
+        return;
+      }
+      
+      const openHour = parseInt(hours.open_time.substring(0, 2));
+      const openMin = parseInt(hours.open_time.substring(3, 5));
+      const closeHour = parseInt(hours.close_time.substring(0, 2));
+      const closeMin = parseInt(hours.close_time.substring(3, 5));
+      
+      let currentMins = openHour * 60 + openMin;
+      const endMins = closeHour * 60 + closeMin;
+      
+      const slots = [];
+      const now = new Date();
+      const isToday = isEqual(startOfDay(selectedDate), startOfDay(now));
+
+      while (currentMins + 60 <= endMins) {
+        const h = Math.floor(currentMins / 60);
+        const m = currentMins % 60;
+        const timeStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        
+        // Filter past times if today
+        if (isToday) {
+          const slotTime = setMinutes(setHours(startOfDay(now), h), m);
+          if (isAfter(slotTime, now)) {
+            slots.push(timeStr);
+          }
+        } else {
+          slots.push(timeStr);
+        }
+        
+        currentMins += 60;
+      }
+      
+      setAvailableTimes(slots);
       setSelectedTime(null);
-      return;
     }
     
-    // Simplistic slots generation (every 30 mins)
-    const openHour = parseInt(hours.open_time.substring(0, 2));
-    const openMin = parseInt(hours.open_time.substring(3, 5));
-    const closeHour = parseInt(hours.close_time.substring(0, 2));
-    const closeMin = parseInt(hours.close_time.substring(3, 5));
-    
-    let currentMins = openHour * 60 + openMin;
-    const endMins = closeHour * 60 + closeMin;
-    
-    const slots = [];
-    while (currentMins + 30 <= endMins) {
-      const h = Math.floor(currentMins / 60);
-      const m = currentMins % 60;
-      slots.push(`${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`);
-      currentMins += 30; // 30 min interval
-    }
-    
-    setAvailableTimes(slots);
-    setSelectedTime(null);
+    updateAvailability();
   }, [selectedDate, selectedService, businessHours, company]);
+
+  const isSlotOccupied = (time: string) => {
+    const service = services.find(s => s.id === selectedService);
+    const duration = service?.duration_minutes || 30;
+    
+    const [h, m] = time.split(':').map(Number);
+    const startMins = h * 60 + m;
+    const endMins = startMins + duration;
+    
+    return bookedAppointments.some(booking => {
+      const [bh, bm] = booking.start_time.split(':').map(Number);
+      const [beh, bem] = booking.end_time.split(':').map(Number);
+      
+      const bStartMins = bh * 60 + bm;
+      const bEndMins = beh * 60 + bem;
+      
+      // Check for overlap: (StartA < EndB) and (EndA > StartB)
+      return (startMins < bEndMins && endMins > bStartMins);
+    });
+  };
 
   const handleNext = () => setStep(s => s + 1);
   const handleBack = () => setStep(s => s - 1);
@@ -177,34 +262,27 @@ export default function PublicBookingPage() {
           status: 'confirmed'
         }]);
         
-        // Trigger webhook for n8n integration
+        // Trigger notification via Server Action (avoids CORS)
         try {
-          await fetch('https://n8n.omniiabr.com/webhook-test/agendamento-confirmado', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
+          await sendBookingNotification({
+            company: company.name,
+            customer: {
+              name: clientName,
+              phone: clientPhone
             },
-            body: JSON.stringify({
-              company: company.name,
-              customer: {
-                name: clientName,
-                phone: clientPhone
-              },
-              service: {
-                name: service?.name,
-                price: service?.price,
-                duration: service?.duration_minutes
-              },
-              appointment: {
-                date: dateStr,
-                time: startTimeStr,
-                endTime: endTimeStr
-              }
-            })
+            service: {
+              name: service?.name,
+              price: service?.price,
+              duration: service?.duration_minutes
+            },
+            appointment: {
+              date: dateStr,
+              time: startTimeStr,
+              endTime: endTimeStr
+            }
           });
         } catch (webhookError) {
-          console.error("Erro ao enviar webhook:", webhookError);
-          // Continue execution even if webhook fails
+          console.error("Erro ao enviar notificação:", webhookError);
         }
         
         setStep(4);
@@ -378,19 +456,25 @@ export default function PublicBookingPage() {
                     </p>
                   ) : (
                     <div className="grid grid-cols-4 gap-3">
-                      {availableTimes.map((time) => (
-                        <button
-                          key={time}
-                          onClick={() => setSelectedTime(time)}
-                          className={`py-2 rounded border text-sm transition-all font-medium ${
-                            selectedTime === time
-                              ? "bg-[#0284c7] text-white border-[#0284c7]"
-                              : "bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-slate-50"
-                          }`}
-                        >
-                          {time}
-                        </button>
-                      ))}
+                      {availableTimes.map((time) => {
+                        const occupied = isSlotOccupied(time);
+                        return (
+                          <button
+                            key={time}
+                            disabled={occupied}
+                            onClick={() => setSelectedTime(time)}
+                            className={`py-2 rounded border text-sm transition-all font-medium ${
+                              occupied 
+                                ? "bg-red-50 text-red-400 border-red-100 cursor-not-allowed" 
+                                : selectedTime === time
+                                ? "bg-[#0284c7] text-white border-[#0284c7]"
+                                : "bg-white text-slate-700 border-slate-200 hover:border-blue-300 hover:bg-slate-50"
+                            }`}
+                          >
+                            {time}
+                          </button>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

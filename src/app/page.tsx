@@ -2,6 +2,7 @@ import { Calendar, MessageCircle, Clock, CheckCircle2, Star, TrendingUp, Users }
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import Link from "next/link";
+import { PricingSection } from "@/components/layout/PricingSection";
 
 export default function LandingPage() {
   return (
@@ -15,6 +16,7 @@ export default function LandingPage() {
         <nav className="hidden md:flex gap-6">
           <Link href="#beneficios" className="text-sm font-medium text-slate-600 hover:text-slate-900">Benefícios</Link>
           <Link href="#como-funciona" className="text-sm font-medium text-slate-600 hover:text-slate-900">Como funciona</Link>
+          <Link href="#planos" className="text-sm font-medium text-slate-600 hover:text-slate-900">Planos</Link>
           <Link href="#depoimentos" className="text-sm font-medium text-slate-600 hover:text-slate-900">Depoimentos</Link>
         </nav>
         <div className="flex gap-4 items-center">
@@ -148,6 +150,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <PricingSection />
 
         {/* Testimonials */}
         <section id="depoimentos" className="py-24 bg-[#0284c7] text-white">
