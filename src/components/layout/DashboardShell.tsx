@@ -57,6 +57,7 @@ export function DashboardShell({ children, userProfile }: DashboardShellProps) {
       <div className="flex w-0 flex-1 flex-col overflow-hidden">
         <Topbar 
           companySlug={userProfile?.companies?.slug || null} 
+          companyId={userProfile?.company_id || null}
           onMenuClick={() => setIsMobileMenuOpen(true)} 
         />
         <main className="relative flex-1 overflow-y-auto focus:outline-none">

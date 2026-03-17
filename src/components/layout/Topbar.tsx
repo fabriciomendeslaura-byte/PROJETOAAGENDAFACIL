@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { createClient } from "@/lib/supabase/client";
 
 const menuItems = [
   { name: "Dashboard", href: "/app/dashboard" },
@@ -17,17 +18,90 @@ const menuItems = [
 ];
 
 export function Topbar({ 
-  companySlug, 
+  companySlug,
+  companyId,
   onMenuClick 
 }: { 
   companySlug?: string | null;
+  companyId?: string | null;
   onMenuClick?: () => void;
 }) {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [hasUnread, setHasUnread] = useState(true);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const currentPage = menuItems.find(item => item.href === pathname)?.name || "Página";
+
+  // Buscar notificações iniciais e configurar Realtime
+  useEffect(() => {
+    if (!companyId) return;
+
+    const supabase = createClient();
+
+    const fetchNotifications = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`
+          id,
+          appointment_date,
+          start_time,
+          created_at,
+          customers (name),
+          services (name)
+        `)
+        .eq("company_id", companyId)
+        .order("created_at", { ascending: false })
+        .limit(5);
+
+      if (!error && data) {
+        setNotifications(data);
+      }
+      setLoading(false);
+    };
+
+    fetchNotifications();
+
+    // Listener Realtime para novos agendamentos
+    const channel = supabase
+      .channel(`new-appointments-${companyId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'appointments',
+          filter: `company_id=eq.${companyId}`
+        },
+        async (payload) => {
+          // Buscar os detalhes (join) do novo agendamento
+          const { data, error } = await supabase
+            .from("appointments")
+            .select(`
+              id,
+              appointment_date,
+              start_time,
+              created_at,
+              customers (name),
+              services (name)
+            `)
+            .eq("id", payload.new.id)
+            .single();
+
+          if (!error && data) {
+            setNotifications(prev => [data, ...prev.slice(0, 4)]);
+            setHasUnread(true);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [companyId]);
 
   // Fechar ao clicar fora
   useEffect(() => {
@@ -107,17 +181,31 @@ export function Topbar({
                   <h3 className="text-sm font-semibold text-slate-900">Notificações</h3>
                   <span className="text-[10px] text-[#0284c7] font-bold uppercase tracking-wider">Novo</span>
                 </div>
-                <div className="space-y-3">
-                  <div className="flex gap-3 p-2 rounded-lg bg-blue-50/50">
-                    <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-                      <Plus className="h-4 w-4 text-[#0284c7]" />
+                <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                  {loading ? (
+                    <div className="py-4 text-center text-xs text-slate-400">Carregando...</div>
+                  ) : notifications.length > 0 ? (
+                    notifications.map((notif) => (
+                      <div key={notif.id} className="flex gap-3 p-2 rounded-lg bg-blue-50/50 hover:bg-blue-50 transition-colors">
+                        <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                          <Plus className="h-4 w-4 text-[#0284c7]" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-semibold text-slate-900">Novo Agendamento!</p>
+                          <p className="text-[11px] text-slate-500">
+                            {notif.customers?.name || "Cliente"} agendou um {notif.services?.name || "serviço"} para dia {new Date(notif.appointment_date).toLocaleDateString('pt-BR')} às {notif.start_time.slice(0, 5)}.
+                          </p>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {new Date(notif.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-8 text-center">
+                      <p className="text-xs text-slate-400">Nenhuma notificação por enquanto.</p>
                     </div>
-                    <div>
-                      <p className="text-xs font-semibold text-slate-900">Novo Agendamento!</p>
-                      <p className="text-[11px] text-slate-500">João da Silva agendou um Corte de Cabelo para hoje às 14:00.</p>
-                      <p className="text-[10px] text-slate-400 mt-1">Agora mesmo</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
                 <Button variant="ghost" className="w-full mt-4 h-8 text-xs text-slate-500 hover:text-slate-900">
                   Ver todas as notificações
