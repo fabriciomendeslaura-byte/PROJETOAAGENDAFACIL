@@ -15,6 +15,8 @@ interface Appointment {
   start_time: string;
   end_time: string;
   status: string;
+  customer_name?: string;
+  customer_phone?: string;
   customers: { name: string };
   services: { name: string };
 }
@@ -44,7 +46,7 @@ export default function AgendaPage() {
       if (userData?.company_id) {
         const { data } = await supabase
           .from("appointments")
-          .select("id, start_time, end_time, status, customers(name), services(name)")
+          .select("id, start_time, end_time, status, customer_name, customer_phone, customers(name), services(name)")
           .eq("company_id", userData.company_id)
           .eq("appointment_date", dateStr)
           .order("start_time", { ascending: true });
@@ -261,14 +263,14 @@ export default function AgendaPage() {
                         <span className="truncate">{app.services?.name}</span>
                         {isVeryShort && (
                           <span className="text-[9px] opacity-70 whitespace-nowrap font-normal">
-                            - {app.customers?.name}
+                            - {app.customer_name || app.customers?.name}
                           </span>
                         )}
                       </div>
                       
                       {!isVeryShort && (
                         <div className="font-medium truncate text-[10px] sm:text-[11px] text-slate-600">
-                          {app.customers?.name}
+                          {app.customer_name || app.customers?.name}
                         </div>
                       )}
                       

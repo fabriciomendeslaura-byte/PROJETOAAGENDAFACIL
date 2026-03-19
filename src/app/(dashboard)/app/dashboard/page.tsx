@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Calendar as CalendarIcon, Clock, DollarSign, ArrowUpRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Users, Calendar as CalendarIcon, Clock, DollarSign, ArrowUpRight, Zap, Crown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePlan } from "@/lib/PlanContext";
+import { PLANS, getPlanColor } from "@/lib/plans";
+import Link from "next/link";
 
 interface Appointment {
   id: string;
@@ -23,6 +27,9 @@ export default function DashboardOverview() {
   const [weeklyData, setWeeklyData] = useState<{ day: string, count: number, date: Date }[]>([]);
   const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0 });
   const [loading, setLoading] = useState(true);
+  const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal } = usePlan();
+  const planDef = PLANS[plan];
+  const colors = getPlanColor(plan);
 
   useEffect(() => {
     fetchDashboardData();
@@ -159,14 +166,50 @@ export default function DashboardOverview() {
               </CardContent>
             </Card>
 
-            <Card className="border-slate-100 relative overflow-hidden">
+            {/* Plan Usage Card */}
+            <Card className={`relative overflow-hidden group ${colors.border} ${colors.bg}`}>
+              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:opacity-20 transition-opacity">
+                <Crown className="h-12 w-12" />
+              </div>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Status do Sistema</CardTitle>
-                <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                <CardTitle className="text-sm font-medium text-slate-600">Seu Plano</CardTitle>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${colors.badge}`}>
+                  {planDef.name.toUpperCase()}
+                </span>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-slate-900">Online</div>
-                <p className="text-xs text-slate-500 mt-1">Sincronizando agendamentos</p>
+                {monthlyLimit ? (
+                  <>
+                    <div className="text-2xl font-bold text-slate-900">
+                      {monthlyCount}<span className="text-base font-medium text-slate-400">/{monthlyLimit}</span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-2">
+                      <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <motion.div 
+                          initial={{ width: 0 }}
+                          animate={{ width: `${usagePercent}%` }}
+                          className={`h-full rounded-full ${usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+                        />
+                      </div>
+                      <span className={`text-[10px] font-bold ${usagePercent >= 90 ? 'text-red-600' : 'text-slate-500'}`}>
+                        {Math.round(usagePercent)}%
+                      </span>
+                    </div>
+                    {plan !== 'premium' && (
+                      <button
+                        onClick={() => openUpgradeModal()}
+                        className="mt-2 text-[10px] font-bold text-[#0284c7] hover:text-[#0369a1] flex items-center gap-1 transition-colors"
+                      >
+                        <Zap className="w-3 h-3" /> Fazer upgrade
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold text-slate-900">Ilimitado</div>
+                    <p className="text-xs text-slate-500 mt-1">{monthlyCount} agendamentos este mês</p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>

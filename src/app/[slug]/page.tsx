@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
 import { format, addDays, getDay, isAfter, setHours, setMinutes, startOfDay, isEqual } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { sendBookingNotification } from "./actions";
+import { sendBookingNotification, checkBookingLimit, incrementBookingCount } from "./actions";
 
 interface Company {
   id: string;
@@ -53,6 +53,8 @@ export default function PublicBookingPage() {
   const [clientPhone, setClientPhone] = useState("");
   
   const [nextDates, setNextDates] = useState<Date[]>([]);
+  const [limitReached, setLimitReached] = useState(false);
+  const [limitInfo, setLimitInfo] = useState<{ plan: string; currentCount: number; limit: number | null } | null>(null);
 
   useEffect(() => {
     async function loadData() {
@@ -68,6 +70,13 @@ export default function PublicBookingPage() {
         
       if (companyData) {
         setCompany(companyData);
+
+        // Check booking limit
+        const limitResult = await checkBookingLimit(companyData.id);
+        setLimitInfo({ plan: limitResult.plan, currentCount: limitResult.currentCount, limit: limitResult.limit });
+        if (!limitResult.allowed) {
+          setLimitReached(true);
+        }
         
         const [servicesRes, hoursRes] = await Promise.all([
           supabase.from('services').select('*').eq('company_id', companyData.id),
@@ -208,6 +217,12 @@ export default function PublicBookingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!company || !selectedService || !selectedTime) return;
+
+    // Check limit one more time before submission
+    if (limitReached) {
+      alert('Este profissional atingiu o limite de agendamentos do mês. Tente novamente no próximo mês.');
+      return;
+    }
     
     setSubmitting(true);
     const supabase = createClient();
@@ -259,12 +274,18 @@ export default function PublicBookingPage() {
           appointment_date: dateStr,
           start_time: startTimeStr,
           end_time: endTimeStr,
-          status: 'confirmed'
+          status: 'confirmed',
+          customer_name: clientName,
+          customer_phone: clientPhone
         }]);
+
+        // Increment booking counter
+        await incrementBookingCount(company.id);
         
         // Trigger notification via Server Action (avoids CORS)
         try {
           await sendBookingNotification({
+            company_id: company.id,
             company: company.name,
             customer: {
               name: clientName,
@@ -308,6 +329,34 @@ export default function PublicBookingPage() {
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
         <h1 className="text-2xl font-bold text-slate-800">Página não encontrada</h1>
         <p className="text-slate-500 mt-2">O link de agendamento que você acessou é inválido.</p>
+      </div>
+    );
+  }
+
+  if (limitReached) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4 text-center">
+        <Card className="max-w-md w-full py-12 px-6 border-slate-200">
+          <div className="w-20 h-20 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Calendar className="w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-2">Agenda indisponível</h2>
+          <p className="text-slate-500 text-sm mb-4">
+            Este profissional atingiu o limite de agendamentos do mês.
+            Tente novamente no próximo mês ou entre em contato diretamente.
+          </p>
+          {limitInfo && limitInfo.limit && (
+            <div className="bg-slate-50 rounded-lg p-4 mt-4">
+              <div className="flex justify-between text-sm text-slate-600 mb-2">
+                <span>Agendamentos usados</span>
+                <span className="font-bold">{limitInfo.currentCount}/{limitInfo.limit}</span>
+              </div>
+              <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                <div className="h-full bg-red-500 rounded-full" style={{ width: '100%' }} />
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
     );
   }

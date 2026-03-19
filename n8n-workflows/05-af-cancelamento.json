@@ -1,0 +1,97 @@
+{
+  "name": "AF - Cancelamento",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af-cancelar-agendamento",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-cancelar",
+      "name": "Webhook Cancelamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "af-cancelar-agendamento"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchingColumn": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "status", "fieldValue": "cancelado" }
+          ]
+        }
+      },
+      "id": "supabase-cancelar",
+      "name": "Cancelar no Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  let phoneFormatted = (data.customer_phone || '').replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `❌ *Agendamento Cancelado*\\n\\nOlá, ${data.customer_name || 'Cliente'}!\\n\\nSeu agendamento foi cancelado com sucesso:\\n\\n🔹 *Serviço:* ${data.service || 'Serviço'}\\n📅 *Data:* ${data.appointment_date || ''}\\n⏰ *Horário:* ${data.start_time || ''}\\n\\nO horário foi liberado para novos agendamentos.\\n\\nSe desejar reagendar, acesse nosso link de agendamento.\\n\\nObrigado! 😊`;\n\n  return {\n    json: {\n      phone: phoneFormatted,\n      message: mensagem,\n      ...data\n    }\n  };\n});"
+      },
+      "id": "code-msg-cancel",
+      "name": "Formatar Mensagem Cancelamento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-cancel",
+      "name": "WhatsApp Cancelamento",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Agendamento cancelado com sucesso' }) }}"
+      },
+      "id": "response-cancel",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Cancelamento": {
+      "main": [[{ "node": "Cancelar no Supabase", "type": "main", "index": 0 }]]
+    },
+    "Cancelar no Supabase": {
+      "main": [[{ "node": "Formatar Mensagem Cancelamento", "type": "main", "index": 0 }]]
+    },
+    "Formatar Mensagem Cancelamento": {
+      "main": [[{ "node": "WhatsApp Cancelamento", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Cancelamento": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

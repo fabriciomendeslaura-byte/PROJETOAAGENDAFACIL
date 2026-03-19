@@ -1,0 +1,104 @@
+{
+  "name": "AF - Criação de Agendamento",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af-criar-agendamento",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-criar",
+      "name": "Webhook Agendamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "af-criar-agendamento"
+    },
+    {
+      "parameters": {
+        "operation": "create",
+        "tableId": "appointments",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "customer_name", "fieldValue": "={{$json.body.customer_name}}" },
+            { "fieldName": "customer_phone", "fieldValue": "={{$json.body.customer_phone}}" },
+            { "fieldName": "service", "fieldValue": "={{$json.body.service}}" },
+            { "fieldName": "appointment_date", "fieldValue": "={{$json.body.appointment_date}}" },
+            { "fieldName": "start_time", "fieldValue": "={{$json.body.start_time}}" },
+            { "fieldName": "company_id", "fieldValue": "={{$json.body.company_id}}" },
+            { "fieldName": "status", "fieldValue": "confirmado" },
+            { "fieldName": "reminder_sent", "fieldValue": "false" },
+            { "fieldName": "followup_sent", "fieldValue": "false" }
+          ]
+        }
+      },
+      "id": "supabase-insert",
+      "name": "Salvar no Supabase",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  const nome = data.customer_name || 'Cliente';\n  const servico = data.service || 'Serviço';\n  const dataAgendamento = data.appointment_date || '';\n  const horario = data.start_time || '';\n  const telefone = data.customer_phone || '';\n\n  // Formatar telefone para Z-API (55 + DDD + numero)\n  let phoneFormatted = telefone.replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `✅ *Agendamento Confirmado!*\\n\\nOlá, ${nome}! Seu agendamento foi realizado com sucesso.\\n\\n📋 *Serviço:* ${servico}\\n📅 *Data:* ${dataAgendamento}\\n⏰ *Horário:* ${horario}\\n\\nCaso precise cancelar ou reagendar, entre em contato conosco.\\n\\nObrigado pela preferência! 💈`;\n\n  return {\n    json: {\n      phone: phoneFormatted,\n      message: mensagem,\n      ...data\n    }\n  };\n});"
+      },
+      "id": "code-msg",
+      "name": "Formatar Mensagem",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-enviar",
+      "name": "WhatsApp Confirmação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Agendamento criado com sucesso' }) }}"
+      },
+      "id": "response",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Agendamento": {
+      "main": [[{ "node": "Salvar no Supabase", "type": "main", "index": 0 }]]
+    },
+    "Salvar no Supabase": {
+      "main": [[{ "node": "Formatar Mensagem", "type": "main", "index": 0 }]]
+    },
+    "Formatar Mensagem": {
+      "main": [[{ "node": "WhatsApp Confirmação", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Confirmação": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

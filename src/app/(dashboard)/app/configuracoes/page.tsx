@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Copy, ExternalLink, Save } from "lucide-react";
+import { Copy, ExternalLink, Save, Lock, Check, Zap, Crown } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 import { ImageUpload } from "@/components/ui/ImageUpload";
+import { usePlan } from "@/lib/PlanContext";
+import { PLANS, getPlanColor, canUseFeature, Feature } from "@/lib/plans";
+import { motion } from "framer-motion";
 
 const DAYS_OF_WEEK = [
   { id: 1, name: "Segunda-feira" },
@@ -218,6 +221,123 @@ export default function ConfiguracoesPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Plan Section */}
+      <PlanSection />
     </div>
+  );
+}
+
+const PLAN_FEATURES_LIST: { key: Feature; label: string; minPlan: 'free' | 'pro' | 'premium' }[] = [
+  { key: 'booking_link', label: 'Link de agendamento', minPlan: 'free' },
+  { key: 'whatsapp_confirmation', label: 'Confirmação via WhatsApp', minPlan: 'free' },
+  { key: 'whatsapp_connection', label: 'Conexão WhatsApp', minPlan: 'free' },
+  { key: 'auto_reminder', label: 'Lembrete automático 24h', minPlan: 'pro' },
+  { key: 'auto_reconfirmation', label: 'Reconfirmação automática', minPlan: 'pro' },
+  { key: 'cancellation_link', label: 'Cancelamento via link', minPlan: 'pro' },
+  { key: 'basic_customization', label: 'Personalização básica', minPlan: 'pro' },
+  { key: 'auto_followup', label: 'Follow-up automático', minPlan: 'premium' },
+  { key: 'auto_reschedule', label: 'Reagendamento automático', minPlan: 'premium' },
+  { key: 'reports', label: 'Relatórios detalhados', minPlan: 'premium' },
+  { key: 'full_automations', label: 'Automações completas', minPlan: 'premium' },
+];
+
+function PlanSection() {
+  const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal } = usePlan();
+  const planDef = PLANS[plan];
+  const colors = getPlanColor(plan);
+
+  return (
+    <Card className={`${colors.border} ${colors.bg}`}>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-xl ${colors.badge} flex items-center justify-center`}>
+              <Crown className="w-5 h-5" />
+            </div>
+            <div>
+              <CardTitle>Seu Plano</CardTitle>
+              <CardDescription>Plano {planDef.name} — {planDef.priceLabel}/mês</CardDescription>
+            </div>
+          </div>
+          <span className={`text-xs font-bold px-3 py-1 rounded-full ${colors.badge}`}>
+            {planDef.name.toUpperCase()}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Usage Bar */}
+        {monthlyLimit && (
+          <div>
+            <div className="flex justify-between items-center mb-2">
+              <p className="text-sm font-medium text-slate-700">Uso mensal</p>
+              <p className="text-sm font-bold text-slate-900">{monthlyCount}/{monthlyLimit} agendamentos</p>
+            </div>
+            <div className="h-3 bg-white rounded-full overflow-hidden border border-slate-200">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${usagePercent}%` }}
+                transition={{ duration: 1, ease: "easeOut" }}
+                className={`h-full rounded-full ${usagePercent >= 90 ? 'bg-red-500' : usagePercent >= 70 ? 'bg-amber-500' : 'bg-blue-500'}`}
+              />
+            </div>
+            {usagePercent >= 80 && (
+              <p className="text-xs text-red-600 font-medium mt-1">
+                ⚠️ Você está próximo do limite mensal do seu plano.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Features List */}
+        <div>
+          <p className="text-sm font-semibold text-slate-700 mb-3">Funcionalidades</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {PLAN_FEATURES_LIST.map((feat) => {
+              const available = canUseFeature(plan, feat.key);
+              return (
+                <div
+                  key={feat.key}
+                  className={`flex items-center gap-3 p-2.5 rounded-lg transition-colors ${
+                    available ? 'bg-white/80' : 'bg-white/40 cursor-pointer hover:bg-white/60'
+                  }`}
+                  onClick={() => !available && openUpgradeModal(feat.label)}
+                >
+                  {available ? (
+                    <div className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-green-600" />
+                    </div>
+                  ) : (
+                    <div className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                      <Lock className="w-3 h-3 text-slate-400" />
+                    </div>
+                  )}
+                  <span className={`text-sm ${available ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+                    {feat.label}
+                  </span>
+                  {!available && (
+                    <span className="text-[9px] text-slate-400 ml-auto font-medium">
+                      {feat.minPlan === 'pro' ? 'Pro' : 'Premium'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Upgrade Button */}
+        {plan !== 'premium' && (
+          <div className="pt-2">
+            <Link href="/app/planos">
+              <Button className="w-full h-11 bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold rounded-xl">
+                <Zap className="w-4 h-4 mr-2" />
+                Fazer upgrade
+              </Button>
+            </Link>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,0 +1,101 @@
+{
+  "name": "AF - Reagendamento",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af-reagendar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-reagendar",
+      "name": "Webhook Reagendamento",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "af-reagendar"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchingColumn": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "appointment_date", "fieldValue": "={{$json.body.appointment_date}}" },
+            { "fieldName": "start_time", "fieldValue": "={{$json.body.start_time}}" },
+            { "fieldName": "status", "fieldValue": "confirmado" },
+            { "fieldName": "reminder_sent", "fieldValue": "false" },
+            { "fieldName": "reconfirmation_sent", "fieldValue": "false" }
+          ]
+        }
+      },
+      "id": "supabase-reagendar",
+      "name": "Atualizar Agendamento",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json;\n  const nome = data.customer_name || 'Cliente';\n  const servico = data.service || 'Serviço';\n  const novaData = data.appointment_date || '';\n  const novoHorario = data.start_time || '';\n  const telefone = data.customer_phone || '';\n\n  let phoneFormatted = telefone.replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `🔄 *Reagendamento Confirmado!*\\n\\nOlá, ${nome}!\\n\\nSeu agendamento foi atualizado com sucesso para:\\n\\n🔹 *Serviço:* ${servico}\\n📅 *Nova Data:* ${novaData}\\n⏰ *Novo Horário:* ${novoHorario}\\n\\nCaso precise de mais alguma alteração, estamos à disposição.\\n\\nObrigado! 😊`;\n\n  return {\n    json: {\n      phone: phoneFormatted,\n      message: mensagem,\n      ...data\n    }\n  };\n});"
+      },
+      "id": "code-msg-reagendar",
+      "name": "Formatar Nova Confirmação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-reagendar",
+      "name": "WhatsApp Nova Confirmação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Reagendamento realizado com sucesso' }) }}"
+      },
+      "id": "response-reagendar",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Reagendamento": {
+      "main": [[{ "node": "Atualizar Agendamento", "type": "main", "index": 0 }]]
+    },
+    "Atualizar Agendamento": {
+      "main": [[{ "node": "Formatar Nova Confirmação", "type": "main", "index": 0 }]]
+    },
+    "Formatar Nova Confirmação": {
+      "main": [[{ "node": "WhatsApp Nova Confirmação", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Nova Confirmação": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

@@ -1,0 +1,71 @@
+{
+  "name": "AF - Confirmação de Agendamento",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af-confirmar-agendamento",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-confirmar",
+      "name": "Webhook Confirmação",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "af-confirmar-agendamento"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json.body || item.json;\n  const nome = data.customer_name || 'Cliente';\n  const servico = data.service || 'Serviço';\n  const dataAgendamento = data.appointment_date || '';\n  const horario = data.start_time || '';\n  const telefone = data.customer_phone || '';\n  const companyName = data.company_name || 'nosso estabelecimento';\n\n  let phoneFormatted = telefone.replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `📋 *Confirmação de Agendamento*\\n\\nOlá, ${nome}!\\n\\nConfirmamos seu agendamento em ${companyName}:\\n\\n🔹 *Serviço:* ${servico}\\n📅 *Data:* ${dataAgendamento}\\n⏰ *Horário:* ${horario}\\n\\nEstamos te esperando! Caso precise alterar, é só nos avisar.\\n\\nAté lá! 😊`;\n\n  return {\n    json: {\n      phone: phoneFormatted,\n      message: mensagem,\n      ...data\n    }\n  };\n});"
+      },
+      "id": "code-confirma",
+      "name": "Formatar Confirmação",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-confirma",
+      "name": "WhatsApp Confirmação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, message: 'Confirmação enviada com sucesso' }) }}"
+      },
+      "id": "response-confirma",
+      "name": "Resposta Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Confirmação": {
+      "main": [[{ "node": "Formatar Confirmação", "type": "main", "index": 0 }]]
+    },
+    "Formatar Confirmação": {
+      "main": [[{ "node": "WhatsApp Confirmação", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Confirmação": {
+      "main": [[{ "node": "Resposta Webhook", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

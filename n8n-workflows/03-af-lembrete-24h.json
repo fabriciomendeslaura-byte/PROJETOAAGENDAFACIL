@@ -1,0 +1,131 @@
+{
+  "name": "AF - Lembrete 24h",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "schedule-lembrete",
+      "name": "Cron Lembrete",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "appointments",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "status=eq.confirmado,reminder_sent=eq.false"
+      },
+      "id": "supabase-buscar",
+      "name": "Buscar Agendamentos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst now = DateTime.now();\nconst limit = now.plus({ hours: 24 });\n\nconst filtered = items.filter(item => {\n  const data = item.json;\n  if (!data.appointment_date || !data.start_time) return false;\n  \n  const appointmentDateTime = DateTime.fromISO(`${data.appointment_date}T${data.start_time}`);\n  \n  // O agendamento deve ser no futuro E dentro de 24 horas\n  return appointmentDateTime > now && appointmentDateTime <= limit;\n});\n\nif (filtered.length === 0) {\n  return [{ json: { hasAppointments: false } }];\n}\n\nreturn filtered.map(item => {\n  const data = item.json;\n  let phoneFormatted = (data.customer_phone || '').replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `⏰ *Lembrete de Agendamento*\\n\\nOlá, ${data.customer_name || 'Cliente'}!\\n\\nLembramos que você tem um agendamento amanhã:\\n\\n🔹 *Serviço:* ${data.service || 'Serviço'}\\n📅 *Data:* ${data.appointment_date}\\n⏰ *Horário:* ${data.start_time}\\n\\nEstamos te esperando! 😊\\n\\nCaso precise cancelar ou reagendar, entre em contato.`;\n\n  return {\n    json: {\n      ...data,\n      hasAppointments: true,\n      phone: phoneFormatted,\n      message: mensagem\n    }\n  };\n});"
+      },
+      "id": "code-filtro-24h",
+      "name": "Filtrar Próximas 24h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "condition-has-appointments",
+              "leftValue": "={{ $json.hasAppointments }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-tem-agendamentos",
+      "name": "Tem Agendamentos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-lembrete",
+      "name": "WhatsApp Lembrete",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchingColumn": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "reminder_sent", "fieldValue": "true" }
+          ]
+        }
+      },
+      "id": "supabase-marcar",
+      "name": "Marcar Lembrete Enviado",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Cron Lembrete": {
+      "main": [[{ "node": "Buscar Agendamentos", "type": "main", "index": 0 }]]
+    },
+    "Buscar Agendamentos": {
+      "main": [[{ "node": "Filtrar Próximas 24h", "type": "main", "index": 0 }]]
+    },
+    "Filtrar Próximas 24h": {
+      "main": [[{ "node": "Tem Agendamentos?", "type": "main", "index": 0 }]]
+    },
+    "Tem Agendamentos?": {
+      "main": [
+        [{ "node": "WhatsApp Lembrete", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "WhatsApp Lembrete": {
+      "main": [[{ "node": "Marcar Lembrete Enviado", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

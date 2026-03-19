@@ -8,24 +8,31 @@ import {
   Scissors, 
   Users, 
   Settings,
-  LogOut
+  LogOut,
+  Crown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { usePlan } from "@/lib/PlanContext";
+import { PLANS, getPlanColor } from "@/lib/plans";
 
 const menuItems = [
   { name: "Dashboard", href: "/app/dashboard", icon: Home },
   { name: "Agenda", href: "/app/agenda", icon: Calendar },
   { name: "Serviços", href: "/app/servicos", icon: Scissors },
   { name: "Clientes", href: "/app/clientes", icon: Users },
+  { name: "Planos", href: "/app/planos", icon: Crown },
   { name: "Configurações", href: "/app/configuracoes", icon: Settings },
 ];
 
 export function Sidebar({ user, isMobile }: { user: any, isMobile?: boolean }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { plan } = usePlan();
+  const colors = getPlanColor(plan);
+  const planDef = PLANS[plan];
 
   const handleLogout = async () => {
     const supabase = createClient();
@@ -92,7 +99,12 @@ export function Sidebar({ user, isMobile }: { user: any, isMobile?: boolean }) {
           </div>
           <div className="ml-3 truncate">
             <p className="text-sm font-medium text-white">{user?.name || "Usuário"}</p>
-            <p className="text-xs font-medium text-slate-400 truncate w-32">{user?.companies?.name || "Empresa"}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs font-medium text-slate-400 truncate max-w-[100px]">{user?.companies?.name || "Empresa"}</p>
+              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${colors.badge}`}>
+                {planDef.name.toUpperCase()}
+              </span>
+            </div>
           </div>
         </div>
         <button 
@@ -106,3 +118,4 @@ export function Sidebar({ user, isMobile }: { user: any, isMobile?: boolean }) {
     </div>
   );
 }
+

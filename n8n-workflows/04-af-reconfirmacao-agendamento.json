@@ -1,0 +1,226 @@
+{
+  "name": "AF - Reconfirmação de Agendamento",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "hours", "hoursInterval": 1 }]
+        }
+      },
+      "id": "schedule-reconfirma",
+      "name": "Cron Reconfirmação",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "appointments",
+        "returnAll": true,
+        "filterType": "string",
+        "filterString": "status=eq.confirmado,reconfirmation_sent=eq.false"
+      },
+      "id": "supabase-buscar-reconf",
+      "name": "Buscar Agendamentos",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\nconst now = DateTime.now();\n\n// Filtrar agendamentos nas próximas 4 horas\nconst limit = now.plus({ hours: 4 });\n\nconst filtered = items.filter(item => {\n  const data = item.json;\n  if (!data.appointment_date || !data.start_time) return false;\n  \n  const appointmentDateTime = DateTime.fromISO(`${data.appointment_date}T${data.start_time}`);\n  \n  return appointmentDateTime > now && appointmentDateTime <= limit;\n});\n\nif (filtered.length === 0) {\n  return [{ json: { hasAppointments: false } }];\n}\n\nreturn filtered.map(item => {\n  const data = item.json;\n  let phoneFormatted = (data.customer_phone || '').replace(/\\D/g, '');\n  if (!phoneFormatted.startsWith('55')) {\n    phoneFormatted = '55' + phoneFormatted;\n  }\n\n  const mensagem = `🔔 *Confirmação de Presença*\\n\\nOlá, ${data.customer_name || 'Cliente'}!\\n\\nSeu agendamento está chegando:\\n\\n🔹 *Serviço:* ${data.service || 'Serviço'}\\n📅 *Data:* ${data.appointment_date}\\n⏰ *Horário:* ${data.start_time}\\n\\nVocê confirma sua presença?\\n\\n✅ *Responda CONFIRMAR* para confirmar\\n❌ *Responda CANCELAR* para cancelar\\n\\nAguardamos sua resposta!`;\n\n  return {\n    json: {\n      ...data,\n      hasAppointments: true,\n      phone: phoneFormatted,\n      message: mensagem\n    }\n  };\n});"
+      },
+      "id": "code-filtro-4h",
+      "name": "Filtrar Próximas 4h",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [750, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "condition-has",
+              "leftValue": "={{ $json.hasAppointments }}",
+              "rightValue": true,
+              "operator": { "type": "boolean", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-tem",
+      "name": "Tem Agendamentos?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.z-api.io/instances/3DE299D91BC7205E84628E66062CE0C1/token/B1C2CBA5A9965C869F3C5554/send-text",
+        "authentication": "none",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ phone: $json.phone, message: $json.message }) }}",
+        "options": {}
+      },
+      "id": "zapi-reconf",
+      "name": "WhatsApp Reconfirmação",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchingColumn": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "reconfirmation_sent", "fieldValue": "true" }
+          ]
+        }
+      },
+      "id": "supabase-marcar-reconf",
+      "name": "Marcar Reconfirmação Enviada",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1500, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "af-resposta-reconfirmacao",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-resposta",
+      "name": "Webhook Resposta Cliente",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 600],
+      "webhookId": "af-resposta-reconfirmacao"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const items = $input.all();\n\nreturn items.map(item => {\n  const data = item.json.body || item.json;\n  const resposta = (data.response || data.message || '').toLowerCase().trim();\n  const appointmentId = data.appointment_id || data.id || '';\n  \n  let action = 'unknown';\n  if (resposta.includes('confirmar') || resposta.includes('sim') || resposta === '1') {\n    action = 'confirmar';\n  } else if (resposta.includes('cancelar') || resposta.includes('nao') || resposta.includes('não') || resposta === '2') {\n    action = 'cancelar';\n  }\n\n  return {\n    json: {\n      appointmentId,\n      action,\n      originalResponse: resposta,\n      ...data\n    }\n  };\n});"
+      },
+      "id": "code-verificar",
+      "name": "Verificar Resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 600]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "id": "condition-cancelar",
+              "leftValue": "={{ $json.action }}",
+              "rightValue": "cancelar",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-cancelar",
+      "name": "Cancelar?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [750, 600]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "appointments",
+        "matchingColumn": "id",
+        "fieldsUi": {
+          "fieldValues": [
+            { "fieldName": "status", "fieldValue": "cancelado" }
+          ]
+        }
+      },
+      "id": "supabase-cancelar",
+      "name": "Cancelar Agendamento",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1000, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ success: true, action: $json.action, message: $json.action === 'cancelar' ? 'Agendamento cancelado' : 'Agendamento confirmado' }) }}"
+      },
+      "id": "response-reconf",
+      "name": "Resposta Reconfirmação",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1250, 600]
+    }
+  ],
+  "connections": {
+    "Cron Reconfirmação": {
+      "main": [[{ "node": "Buscar Agendamentos", "type": "main", "index": 0 }]]
+    },
+    "Buscar Agendamentos": {
+      "main": [[{ "node": "Filtrar Próximas 4h", "type": "main", "index": 0 }]]
+    },
+    "Filtrar Próximas 4h": {
+      "main": [[{ "node": "Tem Agendamentos?", "type": "main", "index": 0 }]]
+    },
+    "Tem Agendamentos?": {
+      "main": [
+        [{ "node": "WhatsApp Reconfirmação", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "WhatsApp Reconfirmação": {
+      "main": [[{ "node": "Marcar Reconfirmação Enviada", "type": "main", "index": 0 }]]
+    },
+    "Webhook Resposta Cliente": {
+      "main": [[{ "node": "Verificar Resposta", "type": "main", "index": 0 }]]
+    },
+    "Verificar Resposta": {
+      "main": [[{ "node": "Cancelar?", "type": "main", "index": 0 }]]
+    },
+    "Cancelar?": {
+      "main": [
+        [{ "node": "Cancelar Agendamento", "type": "main", "index": 0 }],
+        [{ "node": "Resposta Reconfirmação", "type": "main", "index": 0 }]
+      ]
+    },
+    "Cancelar Agendamento": {
+      "main": [[{ "node": "Resposta Reconfirmação", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
