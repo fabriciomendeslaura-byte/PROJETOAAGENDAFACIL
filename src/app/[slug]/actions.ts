@@ -1,6 +1,7 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 
 // Check booking limit and reset monthly count if needed
 export async function checkBookingLimit(companyId: string): Promise<{
@@ -82,6 +83,9 @@ export async function incrementBookingCount(companyId: string) {
     .from("companies")
     .update({ monthly_appointments_count: newCount })
     .eq("id", companyId);
+
+  // Revalidate the dashboard layout to show updated plan usage
+  revalidatePath('/app', 'layout');
 }
 
 export async function sendBookingNotification(data: any) {

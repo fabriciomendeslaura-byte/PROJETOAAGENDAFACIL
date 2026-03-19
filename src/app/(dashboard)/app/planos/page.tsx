@@ -11,14 +11,17 @@ const ALL_FEATURES = [
   { key: 'booking_link', label: 'Link de agendamento exclusivo', plans: ['free', 'pro', 'premium'] },
   { key: 'whatsapp_confirmation', label: 'Confirmação automática via WhatsApp', plans: ['free', 'pro', 'premium'] },
   { key: 'whatsapp_connection', label: 'Conexão com 1 WhatsApp', plans: ['free', 'pro', 'premium'] },
-  { key: 'auto_reminder', label: 'Lembrete automático 24h antes', plans: ['pro', 'premium'] },
+  { key: 'auto_reminder', label: 'Lembrete automático para clientes', plans: ['free', 'pro', 'premium'] },
   { key: 'auto_reconfirmation', label: 'Reconfirmação automática', plans: ['pro', 'premium'] },
   { key: 'cancellation_link', label: 'Cancelamento via link', plans: ['pro', 'premium'] },
+  { key: 'auto_followup', label: 'Follow-up automático após atendimento', plans: ['pro', 'premium'] },
+  { key: 'reports', label: 'Relatórios básicos', plans: ['pro', 'premium'] },
   { key: 'basic_customization', label: 'Personalização básica', plans: ['pro', 'premium'] },
-  { key: 'auto_followup', label: 'Follow-up automático pós-atendimento', plans: ['premium'] },
-  { key: 'auto_reschedule', label: 'Reagendamento automático', plans: ['premium'] },
-  { key: 'reports', label: 'Relatórios detalhados', plans: ['premium'] },
-  { key: 'full_automations', label: 'Automações completas', plans: ['premium'] },
+  { key: 'ai_agent', label: '🤖 Agente de IA', plans: ['premium'] },
+  { key: 'multiple_agents', label: 'Múltiplos agentes (em breve)', plans: ['premium'] },
+  { key: 'advanced_automations', label: 'Automações avançadas', plans: ['premium'] },
+  { key: 'advanced_reports', label: 'Relatórios avançados', plans: ['premium'] },
+  { key: 'priority_support', label: 'Prioridade de suporte', plans: ['premium'] },
 ];
 
 const planOrder: PlanType[] = ['free', 'pro', 'premium'];

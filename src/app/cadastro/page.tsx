@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createClient } from "@/lib/supabase/client";
+import { slugify } from "@/lib/utils";
 
 export default function CadastroPage() {
   const router = useRouter();
@@ -21,26 +22,49 @@ export default function CadastroPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const businessTypes = [
+    { id: "barbearia", name: "Barbearia", icon: "💈" },
+    { id: "salao", name: "Salão de Beleza", icon: "💇‍♀️" },
+    { id: "estetica", name: "Clínica de Estética", icon: "✨" },
+    { id: "manicure", name: "Manicure & Pedicure", icon: "💅" },
+    { id: "petshop", name: "Pet Shop/Banho e Tosa", icon: "🐶" },
+    { id: "outros", name: "Outros Negócios", icon: "🏢" },
+  ];
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     const supabase = createClient();
+    const generatedSlug = slugify(company);
+    const businessTypeLabel = businessTypes.find((t: any) => t.id === businessType)?.name || businessType;
+
     const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
+      email: email,
+      password: password,
       options: {
         data: {
           name: name,
+          full_name: name,
+          fullName: name,
+          company: company,
           company_name: company,
-          business_type: businessType,
+          companyName: company,
+          slug: generatedSlug,
+          company_slug: generatedSlug,
+          companySlug: generatedSlug,
+          business_type: businessTypeLabel,
+          businessType: businessTypeLabel,
+          plan: 'free'
         }
       }
     });
 
     if (error) {
-      setError(error.message);
+      console.error("Erro no signup:", error);
+      const authError = error as any;
+      setError(`${error.message}${authError.hint ? ' - ' + authError.hint : ''}${authError.details ? ' - ' + authError.details : ''}`);
       setLoading(false);
     } else {
       // Due to RLS triggers creating the company and user, we just redirect or show success

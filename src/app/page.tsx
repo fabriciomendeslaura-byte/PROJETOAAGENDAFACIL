@@ -151,6 +151,100 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* AI Agent Section */}
+        <section className="py-24 bg-gradient-to-br from-[#0f172a] to-[#1e1b4b] text-white relative overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 -mr-20 -mt-20 w-96 h-96 rounded-full bg-blue-500 blur-[100px] opacity-20 pointer-events-none"></div>
+          <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-96 h-96 rounded-full bg-purple-500 blur-[100px] opacity-20 pointer-events-none"></div>
+
+          <div className="container mx-auto px-4 relative z-10">
+            <div className="grid lg:grid-cols-2 gap-16 items-center max-w-6xl mx-auto">
+              <div>
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 text-blue-300 font-medium text-sm mb-6 border border-blue-500/30">
+                  <span>✨ Exclusivo Plano Premium</span>
+                </div>
+                <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight mb-6 leading-tight">
+                  🤖 Seu atendente com IA trabalhando 24h por você
+                </h2>
+                <p className="text-xl text-slate-300 mb-8 leading-relaxed">
+                  Automatize seu atendimento, responda clientes e agende horários automaticamente sem levantar um dedo.
+                </p>
+
+                <div className="space-y-4 mb-10">
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <p className="text-slate-200"><strong>Atendimento automático:</strong> Responde clientes instantaneamente não importa o horário.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <p className="text-slate-200"><strong>Respostas inteligentes:</strong> Tira dúvidas de preços, serviços e horários como um humano.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <p className="text-slate-200"><strong>Mais clientes agendados:</strong> Direciona leads quentes automaticamente para o link de agendamento.</p>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center flex-shrink-0 mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <p className="text-slate-200"><strong>Funciona 24h:</strong> Sabado, domingo, madrugada. Seu negócio nunca fecha.</p>
+                  </div>
+                </div>
+
+                <Link href="/cadastro">
+                  <Button size="lg" className="h-14 px-8 text-lg font-bold rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 shadow-xl shadow-blue-900/50 border-0">
+                    Criar meu Agente de IA
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Chat Interface Mockup */}
+              <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl p-6 shadow-2xl relative">
+                {/* Header */}
+                <div className="flex items-center gap-4 border-b border-white/10 pb-4 mb-6">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white">
+                    <span className="text-2xl">🤖</span>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold">Assistente Virtual</h3>
+                    <p className="text-sm text-green-400">Online</p>
+                  </div>
+                </div>
+
+                {/* Messages */}
+                <div className="space-y-4">
+                  <div className="flex justify-end">
+                    <div className="bg-[#dcf8c6] text-slate-800 rounded-2xl rounded-tr-sm px-4 py-3 max-w-[80%] shadow-sm">
+                      <p className="text-sm">Oi! Quanto custa o corte degradê e você tem horário pra hoje a tarde?</p>
+                      <p className="text-[10px] text-slate-500 text-right mt-1">14:30</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="bg-white text-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] shadow-sm relative">
+                      <div className="absolute -left-2 top-0 text-xl">✨</div>
+                      <p className="text-sm">Olá! 👋 O corte degradê está saindo por R$ 45,00.</p>
+                      <p className="text-sm mt-2">Temos horários disponíveis para hoje à tarde sim! Vou te enviar o link para você escolher o horário que fica melhor pra você, tudo bem?</p>
+                      <p className="text-[10px] text-slate-400 text-right mt-1">14:31</p>
+                    </div>
+                  </div>
+                  <div className="flex justify-start">
+                    <div className="bg-white text-slate-800 rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] shadow-sm">
+                      <p className="text-sm text-blue-600 font-medium underline">agendafacil.com/sua-barbearia</p>
+                      <p className="text-[10px] text-slate-400 text-right mt-1">14:31</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <PricingSection />
 
         {/* Testimonials */}

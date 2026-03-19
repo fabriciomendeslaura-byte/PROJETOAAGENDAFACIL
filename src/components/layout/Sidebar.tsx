@@ -9,7 +9,8 @@ import {
   Users, 
   Settings,
   LogOut,
-  Crown
+  Crown,
+  Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,7 @@ const menuItems = [
   { name: "Serviços", href: "/app/servicos", icon: Scissors },
   { name: "Clientes", href: "/app/clientes", icon: Users },
   { name: "Planos", href: "/app/planos", icon: Crown },
+  { name: "Agente IA", href: "/app/agente-ia", icon: Bot },
   { name: "Configurações", href: "/app/configuracoes", icon: Settings },
 ];
 
@@ -90,7 +92,9 @@ export function Sidebar({ user, isMobile }: { user: any, isMobile?: boolean }) {
         <div className="flex items-center w-full">
           <div className="flex-shrink-0">
             <div className="h-9 w-9 rounded-full bg-slate-700 flex items-center justify-center text-sm font-medium text-white overflow-hidden">
-              {user?.companies?.logo_url ? (
+              {user?.avatar_url ? (
+                <img src={user.avatar_url} alt={user.name} className="h-full w-full object-cover" />
+              ) : user?.companies?.logo_url ? (
                 <img src={user.companies.logo_url} alt={user.companies.name} className="h-full w-full object-cover" />
               ) : (
                 getInitials(user?.name || "")

@@ -11,7 +11,12 @@ export type Feature =
   | 'auto_followup'
   | 'auto_reschedule'
   | 'reports'
-  | 'full_automations';
+  | 'full_automations'
+  | 'ai_agent'
+  | 'multiple_agents'
+  | 'advanced_automations'
+  | 'advanced_reports'
+  | 'priority_support';
 
 export interface PlanDefinition {
   id: PlanType;
@@ -32,13 +37,14 @@ export const PLANS: Record<PlanType, PlanDefinition> = {
     name: 'Grátis',
     price: 0,
     priceLabel: 'R$0',
-    description: 'Ideal para quem está começando',
+    description: 'Para quem está começando',
     monthlyLimit: 30,
-    features: ['booking_link', 'whatsapp_confirmation', 'whatsapp_connection'],
+    features: ['booking_link', 'whatsapp_confirmation', 'auto_reminder', 'whatsapp_connection'],
     featureLabels: [
       'Até 30 agendamentos por mês',
-      'Link de agendamento exclusivo',
+      'Link de agendamento',
       'Confirmação automática via WhatsApp',
+      'Lembrete automático para clientes',
       'Conexão com 1 WhatsApp',
     ],
     highlight: false,
@@ -46,46 +52,51 @@ export const PLANS: Record<PlanType, PlanDefinition> = {
   pro: {
     id: 'pro',
     name: 'Pro',
-    price: 29,
-    priceLabel: 'R$29',
+    price: 57,
+    priceLabel: 'R$57',
     description: 'Para profissionais em crescimento',
     monthlyLimit: 200,
     features: [
-      'booking_link', 'whatsapp_confirmation', 'whatsapp_connection',
-      'auto_reminder', 'auto_reconfirmation', 'cancellation_link', 'basic_customization',
+      'booking_link', 'whatsapp_confirmation', 'auto_reminder', 'whatsapp_connection',
+      'auto_reconfirmation', 'cancellation_link', 'auto_followup', 'reports', 'basic_customization',
     ],
     featureLabels: [
       'Até 200 agendamentos por mês',
       'Tudo do plano Grátis',
-      'Lembrete automático 24h antes',
+      'Lembrete automático',
       'Reconfirmação automática',
       'Cancelamento via link',
+      'Follow-up automático após atendimento',
+      'Relatórios básicos',
       'Personalização básica',
     ],
-    highlight: true,
-    badge: 'Mais escolhido',
+    highlight: false,
   },
   premium: {
     id: 'premium',
     name: 'Premium',
-    price: 59,
-    priceLabel: 'R$59',
-    description: 'Escalabilidade e automação total',
+    price: 137,
+    priceLabel: 'R$137',
+    description: 'Escalabilidade e atendimento automático',
     monthlyLimit: null,
     features: [
-      'booking_link', 'whatsapp_confirmation', 'whatsapp_connection',
-      'auto_reminder', 'auto_reconfirmation', 'cancellation_link', 'basic_customization',
-      'auto_followup', 'auto_reschedule', 'reports', 'full_automations',
+      'booking_link', 'whatsapp_confirmation', 'auto_reminder', 'whatsapp_connection',
+      'auto_reconfirmation', 'cancellation_link', 'auto_followup', 'reports', 'basic_customization',
+      'ai_agent', 'multiple_agents', 'advanced_automations', 'advanced_reports', 'priority_support',
+      'auto_reschedule', 'full_automations'
     ],
     featureLabels: [
       'Agendamentos ilimitados',
       'Tudo do plano Pro',
-      'Follow-up automático pós-atendimento',
-      'Reagendamento automático',
-      'Relatórios detalhados',
-      'Automações completas',
+      '🤖 Agente de IA que atende seus clientes automaticamente no WhatsApp',
+      'Atendimento automático com IA (preparado para integração)',
+      'Múltiplos agentes (opcional futuro)',
+      'Automações avançadas',
+      'Relatórios avançados',
+      'Prioridade de suporte',
     ],
-    highlight: false,
+    highlight: true,
+    badge: 'Mais completo',
   },
 };
 
@@ -94,7 +105,9 @@ export function canUseFeature(plan: PlanType, feature: Feature): boolean {
 }
 
 export function getMonthlyLimit(plan: PlanType): number | null {
-  return PLANS[plan]?.monthlyLimit ?? 30;
+  const planDef = PLANS[plan];
+  if (!planDef) return 30;
+  return planDef.monthlyLimit;
 }
 
 export function isAtLimit(plan: PlanType, currentCount: number): boolean {

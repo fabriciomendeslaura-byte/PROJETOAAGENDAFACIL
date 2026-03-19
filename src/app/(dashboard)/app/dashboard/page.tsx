@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, Calendar as CalendarIcon, Clock, DollarSign, ArrowUpRight, Zap, Crown } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek, addDays } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, isSameDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, addDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePlan } from "@/lib/PlanContext";
@@ -24,21 +24,46 @@ interface Appointment {
 
 export default function DashboardOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weeklyData, setWeeklyData] = useState<{ day: string, count: number, date: Date }[]>([]);
-  const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0 });
+  const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0, periodRevenue: 0, periodCount: 0 });
   const [loading, setLoading] = useState(true);
   const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal } = usePlan();
   const planDef = PLANS[plan];
   const colors = getPlanColor(plan);
+  
+  // Group appointments by date for week/month view
+  const groupedAppointments = appointments.reduce((groups: Record<string, Appointment[]>, appointment) => {
+    // Assuming appointment has a date field or we use today's date if not present
+    // Let's modify the fetch to include appointment_date
+    return groups;
+  }, {});
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [viewMode]);
 
   async function fetchDashboardData() {
     setLoading(true);
     const supabase = createClient();
-    const dateStr = format(new Date(), "yyyy-MM-dd");
+    const now = new Date();
+    
+    let startDate: Date;
+    let endDate: Date;
+
+    if (viewMode === 'today') {
+      startDate = startOfDay(now);
+      endDate = endOfDay(now);
+    } else if (viewMode === 'week') {
+      startDate = startOfWeek(now, { weekStartsOn: 1 });
+      endDate = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      startDate = startOfMonth(now);
+      endDate = endOfMonth(now);
+    }
+
+    const startStr = format(startDate, "yyyy-MM-dd");
+    const endStr = format(endDate, "yyyy-MM-dd");
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
@@ -49,21 +74,36 @@ export default function DashboardOverview() {
         .single();
         
       if (userData?.company_id) {
-        // Fetch today's appointments
+        // Fetch appointments for the selected period
         const { data: appts } = await supabase
           .from("appointments")
-          .select("id, start_time, end_time, status, customers(name), services(name, price, duration_minutes)")
+          .select("id, appointment_date, start_time, end_time, status, customers(name), services(name, price, duration_minutes)")
           .eq("company_id", userData.company_id)
-          .eq("appointment_date", dateStr)
+          .gte("appointment_date", startStr)
+          .lte("appointment_date", endStr)
+          .neq("status", "cancelled")
+          .order("appointment_date", { ascending: true })
           .order("start_time", { ascending: true });
           
         if (appts) {
           setAppointments(appts as any);
           const revenue = appts.reduce((sum, app: any) => sum + (app.services?.price || 0), 0);
-          setMetrics(prev => ({ ...prev, todayCount: appts.length, revenue }));
+          
+          if (viewMode === 'today') {
+            setMetrics(prev => ({ ...prev, todayCount: appts.length, revenue, periodRevenue: revenue, periodCount: appts.length }));
+          } else {
+            setMetrics(prev => ({ ...prev, periodRevenue: revenue, periodCount: appts.length }));
+            
+            // Still need today's stats for the cards if not in today view? 
+            // Let's fetch today's separately or filter if today is in range
+            const todayStr = format(now, "yyyy-MM-dd");
+            const todayAppts = appts.filter((a: any) => a.appointment_date === todayStr);
+            const todayRevenue = todayAppts.reduce((sum, app: any) => sum + (app.services?.price || 0), 0);
+            setMetrics(prev => ({ ...prev, todayCount: todayAppts.length, revenue: todayRevenue }));
+          }
         }
 
-        // Fetch weekly appointments for chart - Fixed to start on Monday
+        // Fetch weekly appointments for chart - Always weekly
         const startOfMonday = startOfWeek(new Date(), { weekStartsOn: 1 });
         const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startOfMonday, i));
         
@@ -123,19 +163,21 @@ export default function DashboardOverview() {
                   <CalendarIcon className="h-12 w-12 text-blue-600" />
                 </div>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium text-slate-600">Agendamentos Hoje</CardTitle>
+                  <CardTitle className="text-sm font-medium text-slate-600">
+                    {viewMode === 'today' ? 'Agendamentos Hoje' : `Agendamentos ${viewMode === 'week' ? 'da Semana' : 'do Mês'}`}
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-3xl font-bold text-slate-900">{metrics.todayCount}</div>
+                  <div className="text-3xl font-bold text-slate-900">{metrics.periodCount}</div>
                   <div className="flex items-center gap-2 mt-2">
                     <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
                       <motion.div 
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((metrics.todayCount / 10) * 100, 100)}%` }}
+                        animate={{ width: `${Math.min((metrics.periodCount / (viewMode === 'today' ? 10 : viewMode === 'week' ? 50 : 200)) * 100, 100)}%` }}
                         className="h-full bg-blue-500"
                       />
                     </div>
-                    <span className="text-[10px] font-bold text-blue-600">{Math.round((metrics.todayCount / 10) * 100)}% da meta</span>
+                    <span className="text-[10px] font-bold text-blue-600">{Math.round((metrics.periodCount / (viewMode === 'today' ? 10 : viewMode === 'week' ? 50 : 200)) * 100)}% da meta</span>
                   </div>
                 </CardContent>
               </Card>
@@ -154,14 +196,16 @@ export default function DashboardOverview() {
 
             <Card className="border-green-100 bg-gradient-to-br from-white to-green-50/30">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium text-slate-600">Faturamento Hoje</CardTitle>
+                <CardTitle className="text-sm font-medium text-slate-600">
+                  {viewMode === 'today' ? 'Faturamento Hoje' : `Faturamento ${viewMode === 'week' ? 'da Semana' : 'do Mês'}`}
+                </CardTitle>
                 <DollarSign className="h-4 w-4 text-green-500" />
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-slate-900">R$ {metrics.revenue.toFixed(2).replace('.', ',')}</div>
+                <div className="text-3xl font-bold text-slate-900">R$ {metrics.periodRevenue.toFixed(2).replace('.', ',')}</div>
                 <div className="flex items-center gap-1 mt-1 text-green-600 font-bold text-[10px]">
                   <ArrowUpRight className="h-3 w-3" />
-                  <span>Em tempo real</span>
+                  <span>{viewMode === 'today' ? 'Em tempo real' : 'Total no período'}</span>
                 </div>
               </CardContent>
             </Card>
@@ -214,38 +258,91 @@ export default function DashboardOverview() {
             </Card>
           </div>
 
+          <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit mb-6">
+            {(['today', 'week', 'month'] as const).map((mode) => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  viewMode === mode 
+                    ? "bg-white text-blue-600 shadow-sm" 
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {mode === 'today' ? 'Hoje' : mode === 'week' ? 'Semana' : 'Mês'}
+              </button>
+            ))}
+          </div>
+
           <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
             <Card className="lg:col-span-4">
               <CardHeader>
-                <CardTitle>Próximos Clientes Hoje</CardTitle>
+                <CardTitle>
+                  {viewMode === 'today' 
+                    ? 'Agendamentos de Hoje' 
+                    : viewMode === 'week' 
+                      ? 'Agendamentos da Semana' 
+                      : 'Agendamentos do Mês'}
+                </CardTitle>
                 <CardDescription>
-                  Você tem {appointments.length} agendamentos para hoje.
+                  Você tem {metrics.periodCount} agendamentos {viewMode === 'today' ? 'para hoje' : viewMode === 'week' ? 'nesta semana' : 'neste mês'}.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
                   {appointments.length === 0 && (
-                    <div className="text-center py-6 text-slate-500 border border-dashed rounded-md">
-                      Nenhum agendamento para hoje ainda.
+                    <div className="text-center py-12 text-slate-500 border border-dashed rounded-xl bg-slate-50/50">
+                      <CalendarIcon className="w-12 h-12 text-slate-200 mx-auto mb-3" />
+                      <p className="font-medium">Nenhum agendamento encontrado.</p>
+                      <p className="text-xs text-slate-400 mt-1">Experimente mudar o filtro de período.</p>
                     </div>
                   )}
-                  {appointments.map((apt) => (
-                    <div key={apt.id} className="flex items-center justify-between border-b border-slate-100 pb-4 last:border-0 last:pb-0 gap-3">
-                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold flex-shrink-0">
-                        {apt.customers?.name?.charAt(0).toUpperCase()}
+                  
+                  {appointments.map((apt, index) => {
+                    const prevApt = appointments[index - 1];
+                    const showDateHeader = viewMode !== 'today' && (!prevApt || (apt as any).appointment_date !== (prevApt as any).appointment_date);
+                    
+                    return (
+                      <div key={apt.id}>
+                        {showDateHeader && (
+                          <div className="flex items-center gap-2 mb-4 mt-2">
+                            <div className="h-px bg-slate-100 flex-1"></div>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider px-2">
+                              {format(new Date((apt as any).appointment_date + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+                            </span>
+                            <div className="h-px bg-slate-100 flex-1"></div>
+                          </div>
+                        )}
+                        <div className="flex items-center justify-between border-b border-slate-50 pb-4 last:border-0 last:pb-0 gap-3 group hover:bg-slate-50/50 -mx-2 px-2 transition-colors rounded-lg">
+                          <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold flex-shrink-0 group-hover:bg-blue-100 transition-colors">
+                            {apt.customers?.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate text-slate-900">{apt.customers?.name}</p>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-slate-500 truncate">{apt.services?.name}</p>
+                              {viewMode === 'today' && <span className="text-[10px] text-slate-300">•</span>}
+                              {viewMode === 'today' && <p className="text-[10px] text-slate-400">{apt.start_time.substring(0, 5)}</p>}
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                            {viewMode !== 'today' ? (
+                               <p className="text-sm font-bold text-slate-900">{apt.start_time.substring(0, 5)}</p>
+                            ) : (
+                               <Badge variant={apt.status === "confirmed" ? "success" : "warning"} className="text-[10px] px-1.5 py-0 h-4 uppercase tracking-tighter">
+                                {apt.status === "confirmed" ? "Confirmado" : "Pendente"}
+                               </Badge>
+                            )}
+                            {viewMode !== 'today' && (
+                               <Badge variant={apt.status === "confirmed" ? "success" : "warning"} className="text-[10px] px-1.5 py-0 h-4 uppercase tracking-tighter">
+                                {apt.status === "confirmed" ? "Sim" : "Pnd"}
+                               </Badge>
+                            )}
+                          </div>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-slate-900">{apt.customers?.name}</p>
-                        <p className="text-xs text-slate-500 truncate mt-0.5">{apt.services?.name}</p>
-                      </div>
-                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                        <p className="text-sm font-bold text-slate-900">{apt.start_time.substring(0, 5)}</p>
-                        <Badge variant={apt.status === "confirmed" ? "success" : "warning"} className="text-[10px] px-1.5 py-0 h-4">
-                          {apt.status === "confirmed" ? "Sim" : "Pnd"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
