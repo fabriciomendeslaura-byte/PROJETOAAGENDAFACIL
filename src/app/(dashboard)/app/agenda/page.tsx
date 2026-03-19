@@ -95,8 +95,8 @@ export default function AgendaPage() {
     const startMinutesFrom8 = (startH - 8) * 60 + startM;
 
     return {
-      top: `${(startMinutesFrom8 / 60) * HOUR_HEIGHT}px`,
-      height: `36px` 
+      top: `${(startMinutesFrom8 / 60) * HOUR_HEIGHT + 12}px`, // +12px de folga
+      height: `28px` 
     };
   };
 
@@ -176,7 +176,7 @@ export default function AgendaPage() {
             </div>
 
             {/* Grid Area */}
-            <div className="flex-1 relative w-full mt-[32px] overflow-hidden">
+            <div className="flex-1 relative w-full mt-[20px] overflow-hidden">
               <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]" />
               
               {/* Horizontal Lines */}
@@ -184,7 +184,7 @@ export default function AgendaPage() {
                 <div 
                   key={hour} 
                   className="absolute left-0 right-0 border-t border-slate-100/60 w-full pointer-events-none z-10" 
-                  style={{ top: `${(hour - 8) * HOUR_HEIGHT}px` }} 
+                  style={{ top: `${(hour - 8) * HOUR_HEIGHT + 12}px` }} 
                 />
               ))}
 
@@ -192,7 +192,7 @@ export default function AgendaPage() {
               {nowPos !== null && (
                 <div 
                   className="absolute left-0 right-0 z-40 pointer-events-none flex items-center"
-                  style={{ top: `${nowPos - TOP_OFFSET}px` }}
+                  style={{ top: `${(nowPos - TOP_OFFSET) + 12}px` }}
                 >
                   <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)] -ml-1.25" />
                   <div className="h-[1.5px] bg-red-500 flex-1 shadow-[0_0_4px_rgba(239,68,68,0.3)]" />
