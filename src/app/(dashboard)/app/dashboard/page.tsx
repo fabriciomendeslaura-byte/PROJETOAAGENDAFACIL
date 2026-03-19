@@ -20,6 +20,7 @@ interface Appointment {
   status: string;
   customers: { name: string };
   services: { name: string; price: number; duration_minutes: number };
+  serviço?: string;
 }
 
 export default function DashboardOverview() {
@@ -77,7 +78,7 @@ export default function DashboardOverview() {
         // Fetch appointments for the selected period
         const { data: appts } = await supabase
           .from("appointments")
-          .select("id, appointment_date, start_time, end_time, status, customers(name), services(name, price, duration_minutes)")
+          .select("id, appointment_date, start_time, end_time, status, serviço, customers(name), services(name, price, duration_minutes)")
           .eq("company_id", userData.company_id)
           .gte("appointment_date", startStr)
           .lte("appointment_date", endStr)
@@ -320,7 +321,7 @@ export default function DashboardOverview() {
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold truncate text-slate-900">{apt.customers?.name}</p>
                             <div className="flex items-center gap-2 mt-0.5">
-                              <p className="text-xs text-slate-500 truncate">{apt.services?.name}</p>
+                              <p className="text-xs text-slate-500 truncate">{apt.serviço || apt.services?.name}</p>
                               {viewMode === 'today' && <span className="text-[10px] text-slate-300">•</span>}
                               {viewMode === 'today' && <p className="text-[10px] text-slate-400">{apt.start_time.substring(0, 5)}</p>}
                             </div>

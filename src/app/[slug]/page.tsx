@@ -276,7 +276,8 @@ export default function PublicBookingPage() {
           end_time: endTimeStr,
           status: 'confirmed',
           customer_name: clientName,
-          customer_phone: clientPhone
+          customer_phone: clientPhone,
+          serviço: service?.name // Salva o nome do serviço no momento do agendamento
         }]);
 
         // Increment booking counter
