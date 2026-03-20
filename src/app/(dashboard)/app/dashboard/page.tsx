@@ -291,12 +291,12 @@ export default function DashboardOverview() {
             </Card>
           </div>
 
-          <div className="flex bg-slate-100/50 p-1 rounded-xl w-fit mb-6">
+          <div className="flex bg-slate-100/50 p-1 rounded-xl w-full sm:w-fit mb-6 overflow-x-auto no-scrollbar">
             {(['today', 'week', 'month'] as const).map((mode) => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                className={`px-4 py-2 flex-1 sm:flex-none rounded-lg text-sm font-medium transition-all ${
                   viewMode === mode 
                     ? "bg-white text-blue-600 shadow-sm" 
                     : "text-slate-500 hover:text-slate-700"

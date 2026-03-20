@@ -134,19 +134,19 @@ export default function AgendaPage() {
 
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <div className="flex items-center bg-white rounded-xl border border-slate-200 shadow-sm p-1.5 flex-1 lg:flex-initial">
-             <Button variant="ghost" size="icon" onClick={handlePrevDay} className="h-9 w-9 hover:bg-slate-50 rounded-lg">
-              <ChevronLeft className="h-5 w-5 text-slate-600" />
+             <Button variant="ghost" size="icon" onClick={handlePrevDay} className="h-11 w-11 md:h-9 md:w-9 hover:bg-slate-50 rounded-lg">
+              <ChevronLeft className="h-5 w-5 md:h-4 md:w-4 text-slate-600" />
             </Button>
-            <div className="px-4 flex flex-col items-center min-w-[160px]">
-              <span className="font-bold text-sm text-slate-800 capitalize">
+            <div className="px-2 md:px-4 flex flex-col items-center flex-1 min-w-0">
+              <span className="font-bold text-xs md:text-sm text-slate-800 capitalize truncate w-full text-center">
                 {format(currentDate, "EEEE, dd 'de' MMMM", { locale: ptBR })}
               </span>
               {isSameDay(currentDate, new Date()) && (
                 <span className="text-[10px] text-blue-600 font-bold uppercase tracking-tighter">Hoje</span>
               )}
             </div>
-            <Button variant="ghost" size="icon" onClick={handleNextDay} className="h-9 w-9 hover:bg-slate-50 rounded-lg">
-              <ChevronRight className="h-5 w-5 text-slate-600" />
+            <Button variant="ghost" size="icon" onClick={handleNextDay} className="h-11 w-11 md:h-9 md:w-9 hover:bg-slate-50 rounded-lg">
+              <ChevronRight className="h-5 w-5 md:h-4 md:w-4 text-slate-600" />
             </Button>
           </div>
           

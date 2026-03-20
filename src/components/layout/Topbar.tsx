@@ -20,7 +20,7 @@ const menuItems = [
 export function Topbar({ 
   companySlug,
   companyId,
-  onMenuClick 
+  onMenuClick
 }: { 
   companySlug?: string | null;
   companyId?: string | null;
@@ -124,7 +124,7 @@ export function Topbar({
         >
           <Menu className="h-6 w-6" />
         </button>
-        <h1 className="text-xl font-semibold text-slate-900">{currentPage}</h1>
+        <h1 className="text-xl font-semibold text-slate-900 truncate max-w-[150px] sm:max-w-none">{currentPage}</h1>
       </div>
       
       <div className="flex items-center gap-2 sm:gap-4">

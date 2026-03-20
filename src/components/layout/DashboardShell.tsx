@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
+import { BottomNav } from "./BottomNav";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface DashboardShellProps {
@@ -21,7 +22,7 @@ export function DashboardShell({ children, userProfile }: DashboardShellProps) {
   }, [pathname]);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-[100dvh] w-full overflow-hidden bg-slate-50">
       {/* Sidebar Desktop */}
       <div className="hidden md:flex md:flex-shrink-0 border-r border-slate-200">
         <Sidebar user={userProfile} />
@@ -54,18 +55,21 @@ export function DashboardShell({ children, userProfile }: DashboardShellProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex w-0 flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <Topbar 
           companySlug={userProfile?.companies?.slug || null} 
           companyId={userProfile?.company_id || null}
-          onMenuClick={() => setIsMobileMenuOpen(true)} 
+          onMenuClick={() => setIsMobileMenuOpen(true)}
         />
-        <main className="relative flex-1 overflow-y-auto focus:outline-none">
-          <div className="py-6 px-4 sm:px-6 md:px-8">
+        <main className="relative flex-1 overflow-x-hidden overflow-y-auto focus:outline-none md:pb-0 pb-[80px]">
+          <div className="py-4 px-4 sm:p-6 md:p-8 w-full max-w-full mx-auto">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Bottom Nav Mobile */}
+      <BottomNav companySlug={userProfile?.companies?.slug || null} />
     </div>
   );
 }
