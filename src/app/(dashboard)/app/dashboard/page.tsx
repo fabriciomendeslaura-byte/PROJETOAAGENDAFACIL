@@ -27,6 +27,7 @@ export default function DashboardOverview() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [viewMode, setViewMode] = useState<'today' | 'week' | 'month'>('today');
   const [weeklyData, setWeeklyData] = useState<{ day: string, count: number, date: Date }[]>([]);
+  const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0, periodRevenue: 0, periodCount: 0 });
   const [loading, setLoading] = useState(true);
   const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal } = usePlan();
@@ -134,6 +135,21 @@ export default function DashboardOverview() {
           
         if (count !== null) {
           setMetrics(prev => ({ ...prev, newClients: count }));
+        }
+
+        // Fetch upcoming appointments (next 5)
+        const { data: upcoming } = await supabase
+          .from("appointments")
+          .select("id, appointment_date, start_time, end_time, status, serviço, customers(name), services(name, price, duration_minutes)")
+          .eq("company_id", userData.company_id)
+          .gte("appointment_date", format(now, "yyyy-MM-dd"))
+          .neq("status", "cancelled")
+          .order("appointment_date", { ascending: true })
+          .order("start_time", { ascending: true })
+          .limit(5);
+
+        if (upcoming) {
+          setUpcomingAppointments(upcoming as any);
         }
       }
     }
@@ -280,7 +296,7 @@ export default function DashboardOverview() {
               <CardHeader>
                 <CardTitle>
                   {viewMode === 'today' 
-                    ? 'Agendamentos de Hoje' 
+                    ? (appointments.length > 0 ? 'Agendamentos de Hoje' : 'Próximos Agendamentos') 
                     : viewMode === 'week' 
                       ? 'Agendamentos da Semana' 
                       : 'Agendamentos do Mês'}
@@ -291,17 +307,18 @@ export default function DashboardOverview() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {appointments.length === 0 && (
+                  {appointments.length === 0 && upcomingAppointments.length === 0 && (
                     <div className="text-center py-12 text-slate-500 border border-dashed rounded-xl bg-slate-50/50">
                       <CalendarIcon className="w-12 h-12 text-slate-200 mx-auto mb-3" />
                       <p className="font-medium">Nenhum agendamento encontrado.</p>
-                      <p className="text-xs text-slate-400 mt-1">Experimente mudar o filtro de período.</p>
+                      <p className="text-xs text-slate-400 mt-1">Sua agenda está livre para novos clientes.</p>
                     </div>
                   )}
-                  
-                  {appointments.map((apt, index) => {
-                    const prevApt = appointments[index - 1];
-                    const showDateHeader = viewMode !== 'today' && (!prevApt || (apt as any).appointment_date !== (prevApt as any).appointment_date);
+
+                  {(viewMode === 'today' && appointments.length === 0 ? upcomingAppointments : appointments).map((apt, index) => {
+                    const currentList = viewMode === 'today' && appointments.length === 0 ? upcomingAppointments : appointments;
+                    const prevApt = currentList[index - 1];
+                    const showDateHeader = (viewMode !== 'today' || appointments.length === 0) && (!prevApt || (apt as any).appointment_date !== (prevApt as any).appointment_date);
                     
                     return (
                       <div key={apt.id}>
