@@ -30,7 +30,7 @@ export default function DashboardOverview() {
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [metrics, setMetrics] = useState({ todayCount: 0, revenue: 0, newClients: 0, periodRevenue: 0, periodCount: 0 });
   const [loading, setLoading] = useState(true);
-  const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal } = usePlan();
+  const { plan, monthlyCount, monthlyLimit, usagePercent, openUpgradeModal, setMonthlyCount } = usePlan();
   const planDef = PLANS[plan];
   const colors = getPlanColor(plan);
   
@@ -151,6 +151,22 @@ export default function DashboardOverview() {
         if (upcoming) {
           setUpcomingAppointments(upcoming as any);
         }
+
+        // Fetch real count to bypass layout cache
+        const startOfMonStr = format(startOfMonth(now), "yyyy-MM-dd");
+        const endOfMonStr = format(endOfMonth(now), "yyyy-MM-dd");
+        
+        const { count: realCount } = await supabase
+          .from("appointments")
+          .select("*", { count: 'exact', head: true })
+          .eq("company_id", userData.company_id)
+          .gte("appointment_date", startOfMonStr)
+          .lte("appointment_date", endOfMonStr)
+          .neq("status", "cancelled");
+
+        if (realCount !== null) {
+          setMonthlyCount(realCount);
+        }
       }
     }
     setLoading(false);
@@ -242,7 +258,7 @@ export default function DashboardOverview() {
                 {monthlyLimit ? (
                   <>
                     <div className="text-2xl font-bold text-slate-900">
-                      {monthlyCount}<span className="text-base font-medium text-slate-400">/{monthlyLimit}</span>
+                      {monthlyCount || 0}<span className="text-base font-medium text-slate-400">/{monthlyLimit}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-2">
                       <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
@@ -268,7 +284,7 @@ export default function DashboardOverview() {
                 ) : (
                   <>
                     <div className="text-2xl font-bold text-slate-900">Ilimitado</div>
-                    <p className="text-xs text-slate-500 mt-1">{monthlyCount} agendamentos este mês</p>
+                    <p className="text-xs text-slate-500 mt-1">{monthlyCount || 0} agendamentos este mês</p>
                   </>
                 )}
               </CardContent>

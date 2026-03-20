@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { PlanType, PLANS, canUseFeature, isAtLimit, getMonthlyLimit, Feature } from "./plans";
 
 interface PlanContextType {
@@ -14,6 +14,7 @@ interface PlanContextType {
   upgradeFeature: string | null;
   openUpgradeModal: (featureName?: string) => void;
   closeUpgradeModal: () => void;
+  setMonthlyCount: (count: number) => void;
 }
 
 const PlanContext = createContext<PlanContextType | null>(null);
@@ -29,10 +30,16 @@ export function PlanProvider({
 }) {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null);
+  const [liveMonthlyCount, setLiveMonthlyCount] = useState(monthlyCount);
+
+  // Sync state if props change (e.g., from server)
+  useEffect(() => {
+    setLiveMonthlyCount(monthlyCount);
+  }, [monthlyCount]);
 
   const limit = getMonthlyLimit(plan);
-  const atLimit = isAtLimit(plan, monthlyCount);
-  const usagePercent = limit ? Math.min((monthlyCount / limit) * 100, 100) : 0;
+  const atLimit = isAtLimit(plan, liveMonthlyCount);
+  const usagePercent = limit ? Math.min((liveMonthlyCount / limit) * 100, 100) : 0;
 
   const openUpgradeModal = (featureName?: string) => {
     setUpgradeFeature(featureName || null);
@@ -57,6 +64,7 @@ export function PlanProvider({
         upgradeFeature,
         openUpgradeModal,
         closeUpgradeModal,
+        setMonthlyCount: setLiveMonthlyCount,
       }}
     >
       {children}
@@ -79,6 +87,7 @@ export function usePlan() {
       upgradeFeature: null,
       openUpgradeModal: () => {},
       closeUpgradeModal: () => {},
+      setMonthlyCount: () => {},
     };
   }
   return ctx;
