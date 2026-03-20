@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { PlanType } from "@/lib/plans";
 import { PlanProvider } from "@/lib/PlanContext";
 import { UpgradeModal } from "@/components/ui/UpgradeModal";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
 export default async function DashboardLayout({
   children,
@@ -38,7 +39,20 @@ export default async function DashboardLayout({
   const plan = (dbPlan === 'free' || dbPlan === 'pro' || dbPlan === 'premium') 
     ? dbPlan as PlanType 
     : 'free';
-  const monthlyCount = company?.monthly_appointments_count || 0;
+
+  // Real-time count of appointments for the current month
+  const now = new Date();
+  const startStr = format(startOfMonth(now), "yyyy-MM-dd");
+  const endStr = format(endOfMonth(now), "yyyy-MM-dd");
+
+  const { count: realCount } = await supabase
+    .from("appointments")
+    .select("*", { count: 'exact', head: true })
+    .eq("company_id", company?.id)
+    .gte("appointment_date", startStr)
+    .lte("appointment_date", endStr);
+
+  const monthlyCount = realCount || 0;
 
   return (
     <PlanProvider plan={plan} monthlyCount={monthlyCount}>
