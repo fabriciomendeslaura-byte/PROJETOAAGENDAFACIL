@@ -30,7 +30,9 @@ export default function ConfiguracoesPage() {
   const [companyName, setCompanyName] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [slug, setSlug] = useState("");
+  const [bio, setBio] = useState("");
   const [origin, setOrigin] = useState("");
+  const [copied, setCopied] = useState(false);
   
   const [hours, setHours] = useState<Record<number, { active: boolean; open: string; close: string }>>({});
 
@@ -52,7 +54,7 @@ export default function ConfiguracoesPage() {
           
           const { data: companyData } = await supabase
             .from("companies")
-            .select("name, slug, logo_url")
+            .select("name, slug, logo_url, bio")
             .eq("id", userData.company_id)
             .single();
             
@@ -60,6 +62,7 @@ export default function ConfiguracoesPage() {
             setCompanyName(companyData.name);
             setSlug(companyData.slug || "");
             setLogoUrl(companyData.logo_url || "");
+            setBio(companyData.bio || "");
           }
 
           const { data: hoursData } = await supabase
@@ -94,7 +97,8 @@ export default function ConfiguracoesPage() {
     // Update company
     await supabase.from("companies").update({ 
       name: companyName,
-      logo_url: logoUrl 
+      logo_url: logoUrl,
+      bio: bio
     }).eq("id", companyId);
 
     // Update business hours (delete all current and insert active ones)
@@ -145,9 +149,17 @@ export default function ConfiguracoesPage() {
                 <span className="truncate">{slug}</span>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="flex-1 sm:flex-initial bg-white hover:bg-slate-50 border-blue-200 text-blue-700 h-10 sm:h-9" onClick={() => navigator.clipboard.writeText(`${origin}/${slug}`)}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copiar
+                <Button 
+                  variant="outline" 
+                  className={`flex-1 sm:flex-initial bg-white hover:bg-slate-50 border-blue-200 text-blue-700 h-10 sm:h-9 transition-all ${copied ? 'border-green-500 text-green-600 bg-green-50' : ''}`} 
+                  onClick={() => {
+                    navigator.clipboard.writeText(`${origin}/${slug}`);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                >
+                  {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                  {copied ? "Copiado!" : "Copiar"}
                 </Button>
                 <Link href={`/${slug}`} target="_blank" className="sm:inline-block">
                   <Button variant="ghost" className="h-10 sm:h-9 text-blue-700 hover:text-blue-800 hover:bg-blue-100">
@@ -177,7 +189,18 @@ export default function ConfiguracoesPage() {
 
             <div className="space-y-2">
               <Label htmlFor="companyName">Nome da Empresa</Label>
-              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} />
+              <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Ex: Barbearia do João" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="bio">Biografia / Descrição</Label>
+              <Input 
+                id="bio" 
+                value={bio} 
+                onChange={(e) => setBio(e.target.value)} 
+                placeholder="Uma breve descrição do seu negócio..."
+              />
+              <p className="text-[10px] text-slate-400">Esta descrição aparece no topo da sua página de agendamento.</p>
             </div>
             {/* Outros campos simulados */}
           </CardContent>

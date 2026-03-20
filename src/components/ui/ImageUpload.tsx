@@ -13,7 +13,6 @@ interface ImageUploadProps {
 
 export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
   const [loading, setLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -51,20 +50,31 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
 
   const handleRemove = () => {
     onChange("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
   };
 
   return (
     <div className="flex flex-col items-center gap-4">
       <div 
         className={`relative w-32 h-32 rounded-full overflow-hidden border-2 border-dashed border-slate-200 flex items-center justify-center bg-slate-50 transition-all ${!disabled && "hover:border-[#0284c7] hover:bg-blue-50/30 cursor-pointer"}`}
-        onClick={() => !disabled && fileInputRef.current?.click()}
       >
+        {/* Transparent input overlay for better mobile touch support */}
+        {!disabled && !loading && (
+          <input
+            type="file"
+            onChange={handleUpload}
+            accept="image/*"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+            disabled={disabled || loading}
+            title="Escolher imagem"
+          />
+        )}
+
         {value ? (
           <>
             <img src={value} alt="Logo preview" className="w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-black/40 opacity-0 hover:opacity-100 transition-opacity flex items-center justify-center z-10">
+              <Upload className="w-6 h-6 text-white" />
+            </div>
             {!disabled && (
               <button
                 type="button"
@@ -72,7 +82,7 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
                   e.stopPropagation();
                   handleRemove();
                 }}
-                className="absolute top-1 right-1 p-1 bg-white rounded-full shadow-sm text-slate-500 hover:text-red-500 transition-colors"
+                className="absolute top-1 right-1 p-1.5 bg-white rounded-full shadow-md text-slate-500 hover:text-red-500 transition-colors z-30"
                 title="Remover imagem"
               >
                 <X className="w-4 h-4" />
@@ -86,7 +96,7 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
             ) : (
               <>
                 <ImageIcon className="w-8 h-8 mb-1" />
-                <span className="text-[10px] font-medium uppercase tracking-wider">Logo</span>
+                <span className="text-[10px] font-medium uppercase tracking-wider text-center px-2">Carregar Logo</span>
               </>
             )}
           </div>
@@ -94,27 +104,26 @@ export function ImageUpload({ value, onChange, disabled }: ImageUploadProps) {
       </div>
 
       {!value && !loading && (
-        <Button 
-          type="button" 
-          variant="outline" 
-          size="sm" 
-          disabled={disabled}
-          onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2"
-        >
-          <Upload className="w-4 h-4" />
-          Carregar Logo
-        </Button>
+        <div className="relative">
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            disabled={disabled}
+            className="flex items-center gap-2 pointer-events-none"
+          >
+            <Upload className="w-4 h-4" />
+            Escolher Arquivo
+          </Button>
+          <input
+            type="file"
+            onChange={handleUpload}
+            accept="image/*"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            disabled={disabled || loading}
+          />
+        </div>
       )}
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleUpload}
-        accept="image/*"
-        className="hidden"
-        disabled={disabled || loading}
-      />
       
       <p className="text-[10px] text-slate-400 text-center max-w-[200px]">
         Recomendado: Quadrado (1:1), PNG ou JPG de até 2MB.

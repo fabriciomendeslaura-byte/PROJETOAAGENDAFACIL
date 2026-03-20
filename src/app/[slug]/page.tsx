@@ -17,6 +17,7 @@ interface Company {
   name: string;
   business_type: string;
   logo_url?: string;
+  bio?: string;
 }
 
 interface Service {
@@ -394,7 +395,12 @@ export default function PublicBookingPage() {
             )}
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">{company.name}</h1>
-          <div className="flex items-center justify-center gap-2 mt-2 text-slate-500 text-sm">
+          {company.bio && (
+            <p className="mt-2 text-slate-600 text-sm max-w-sm mx-auto leading-relaxed">
+              {company.bio}
+            </p>
+          )}
+          <div className="flex items-center justify-center gap-2 mt-3 text-slate-500 text-xs font-medium">
             <MapPin className="w-4 h-4" />
             <span>{company.business_type || "Negócio Local"}</span>
           </div>
